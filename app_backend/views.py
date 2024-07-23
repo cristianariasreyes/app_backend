@@ -1,35 +1,40 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.authtoken.models import Token
 from .serializers import userSerializer
 from rest_framework import status
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.views import APIView
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def getRoutes(request):
     routes = [
         
-        {'POST': 'chat/'},
+        {'GET,POST': 'register/'},
+        {'GET,POST': 'login/'},
+        {'POST': 'logout/'},
+        
+        
         {'GET': 'chat/assistant/'},
         {'POST': 'chat/assistant/'},
         {'GET': 'chat/assistant/<int:id>'},
         {'PUT': 'chat/assistant/<int:id>'},
         {'DELETE': 'chat/assistant/<int:id>'},
         
+        {'POST': 'chat_my_docs/<int:id>'},
+        {'POST': 'chat_with_assistant/<int:id>'},        
+        
         {'GET': 'chat_assistant_documents/'},
         {'POST': 'chat_assistant_documents/'},
         {'GET': 'chat_assistant_documents/<int:id>'},
         {'PUT': 'chat_assistant_documents/<int:id>'},
         {'DELETE': 'chat_assistant_documents/<int:id>'},
-        
-        
+
         {'POST': 'chat/evaluate_answer/<int:id_chat_history>/<int:useful>'},
-        {'POST': 'chat_my_docs/<int:id>'},
-        {'POST': 'chat_with_assistant/<int:id>'},
+
         
         {'GET': 'documents/'},
         {'POST': 'documents/'},
@@ -60,7 +65,9 @@ def getRoutes(request):
     ]
     return Response(routes)
 
-@api_view(['POST'])
+
+
+@api_view(['GET','POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def LoginUser(request):
     user = get_object_or_404(User, username=request.data['username'])
@@ -74,7 +81,7 @@ def LoginUser(request):
             'user': request.data['username']
         }, status=status.HTTP_200_OK)
         
-@api_view(['POST','GET'])
+@api_view(['GET','POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def RegisterUser(request):
     LoginObj = userSerializer(data=request.data)
@@ -98,7 +105,7 @@ def RegisterUser(request):
         return Response(LoginObj.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([IsAuthenticated])  # Cambia a IsAuthenticated si es necesario
 def LogOutUser(request):
     try:
         # Obtenemos el token de refresco del cuerpo de la solicitud

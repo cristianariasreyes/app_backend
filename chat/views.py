@@ -11,7 +11,8 @@ from documents.models import Document_type, Document_department, Document_catego
 from chat.models import Chat_assistant,Chat_assistant_documents
 from chat.serializers import Chat_assistantSerializer, Chat_assistant_documentsSerializer
 from chat.services.chat_with_documents import document_chat
-from rest_framework import status
+from rest_framework import status, permissions
+from rest_framework.views import APIView
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
@@ -250,3 +251,19 @@ def handle_assistant_coach(request):
                 return JsonResponse({'result':False,'error_message': str(e)})
     else:
         return render(request, 'assistant_coach.html')    
+    
+class NotFoundView(APIView):
+    permission_classes = [permissions.AllowAny]
+    def get(self, request, *args, **kwargs):
+        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    def post(self, request, *args, **kwargs):
+        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    def put(self, request, *args, **kwargs):
+        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    def delete(self, request, *args, **kwargs):
+        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
+
+    

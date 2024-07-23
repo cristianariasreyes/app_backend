@@ -1,8 +1,9 @@
 from django.urls import path
 from . import views
 
+
 urlpatterns = [
-    path('', views.chat_with_documents, name='chat_with_documents'),
+    path('', views.NotFoundView.as_view(), name='not_found'),
     path('chat_assistant/', views.Getchat_assistant, name='Getchat_assistant'),  
     path('chat_assistant/<int:id>', views.Getchat_assistant_detail, name="Getchat_assistant_detail"),
     path('chat_assistant_documents/', views.Get_chat_assistant_document, name='Get_chat_assistant_document'),  
