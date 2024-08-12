@@ -22,7 +22,7 @@ from .chat_tools import ChatWithModels, PineconeRelevantDocs
 load_dotenv()
 
 class document_chat:
-    
+
     def __init__(self, temperature=0.0,llm_model="",asistant=None,pdf_id_document=None,pdf_document=None,conversation_hash=None):
         self.llm=ChatOpenAI(model=llm_model,temperature=temperature)
         self.help_file=""
@@ -36,12 +36,12 @@ class document_chat:
         self.pdf_id_document = pdf_id_document
         self.pdf_document = pdf_document
         self.conversation_hash = conversation_hash
-        
+
     def get_prompt(self,query):
         print("Armando el prompt...")
         try:
-            
-            system_prompt ="""Esta es una conversacion amistosa entre un humano y una IA. 
+
+            system_prompt ="""Esta es una conversacion amistosa entre un humano y una IA.
             El humano hace preguntas y la IA responde.
             La IA responde solo basado en los documentos que tiene disponibles.
             La IA tiene memoria, para ello tiene a su disposicion un historial de conversacion reciente que
@@ -50,24 +50,24 @@ class document_chat:
             2. En caso el humano pregunte especificamente por conversaciones recientes.
             como base de la respuesta. Si la pregunta no tiene nada que ver con el historial debe decir
             simplemente que no tiene informacion suficiente para responder.
-            
+
             Pregunta actual del humano: {query}
             """
-            
+
             prompt_template = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
                 ("human","{query}"),
                 MessagesPlaceholder(variable_name="chat_history")
             ])
             return prompt_template
-        
+
 
             #prompt = PromptTemplate(
             #    input_variables={"documents", "query", "history"},
             #    template=template)
             #respuesta = prompt.format(documents=documents,query=query,history=history)
-            
-            #print("Prompt: "+respuesta) 
+
+            #print("Prompt: "+respuesta)
         except Exception as e:
             print(f"Se produjo un error generando el prompt: {e}")
     def get_metadata(self):
@@ -85,8 +85,8 @@ class document_chat:
             ),
             AttributeInfo(
                 name="category",
-                description="""Nos dice que tipo de informacion cotiene el documento. Debemos usar 
-                esta metadata para entender mejor el contenido del documento y poder hacer busquedas 
+                description="""Nos dice que tipo de informacion cotiene el documento. Debemos usar
+                esta metadata para entender mejor el contenido del documento y poder hacer busquedas
                 mas precisas.""",
                 type="string"
             ),
@@ -97,7 +97,7 @@ class document_chat:
             ),
             AttributeInfo(
                 name="identifier",
-                description="""Identificador. Usar este campo para agrupar documentos que refieren 
+                description="""Identificador. Usar este campo para agrupar documentos que refieren
                 a un unico identificador como podria ser un DNI, un rol, etc.""",
                 type="string"
             ),
@@ -117,7 +117,7 @@ class document_chat:
                 relacionar el contenido con un departamento especifico de la empresa.""",
                 type="string"
             )
-        ]   
+        ]
     def basic_chat_with_memory(self):
         print("Creando un vector store...")
         vector_store = PineconeVectorStore.from_existing_index(index_name="agora",embedding=self.embeddings)
@@ -126,10 +126,10 @@ class document_chat:
         memory_chat = []
         memory_chat = self.get_db_history_chat()
         if memory_chat==[]:
-            memory_chat.append(("",""))        
+            memory_chat.append(("",""))
         #Invocamos el prompt
         self.prompt = self.get_prompt(self.query)
-        
+
         print("Obteniendo una respuesta con historial...")
         try:
             print("creando un retriever...")
@@ -163,10 +163,10 @@ class document_chat:
                 llm=self.llm,
                 retriever=retriever,
                 return_source_documents=True
-                
+
                 )
             result = qa.invoke(self.query)
-            
+
             print(result)
             return result["result"]
         except Exception as e:
@@ -207,7 +207,7 @@ class document_chat:
         print(f"ID_VDBs: {id_vdbs}")
         return id_vdbs
 
-    
+
     def assistant_chat(self,id_assistant,query):
         #rescatamos de la tabla assistant
         print("Obteniendo asistente...")
@@ -217,7 +217,7 @@ class document_chat:
         temperature = chat_assistant.temperature
         role = chat_assistant.role
         print(f"Modelo:{llm_model} Temperatura:{temperature} Rol:{role}")
-        
+
         #Obtenemos todos los documentos del asistente
         print("Obteniendo documentos del asistente...")
         chat_assistant_documents = Chat_assistant_documents.objects.filter(id_chat_assistant=id_assistant)
@@ -227,7 +227,7 @@ class document_chat:
         print("Obteniendo documentos relevantes desde Pinecone...")
         RelevantDocsObject = PineconeRelevantDocs(query,5)
         Relevant_docs=RelevantDocsObject.HashIDFilterSearch(document_hashIDs)
-        
+
         #Concatenamos los documentos relevantes a role
         role = f"""{role} /n Basa tu respuesta en estos documentos: /n {Relevant_docs['relevant_docs']}"""
         #Hacemos la consulta a OpenAI
@@ -237,7 +237,7 @@ class document_chat:
         final_response = f"{model_response} /n Fuentes:/n {Relevant_docs['sources']}"
         print(f"La respuesta final es: {final_response}")
         return final_response
-    
+
     def ChatSingleDoc(self,id_document,query):
         #Obtenemos el id_vdb del documento
         print("Obteniendo id de base vectorial...")
@@ -247,7 +247,7 @@ class document_chat:
         print(f"Consultando documento {hash_ID} en Pinecone...")
         RelevantDocsObject = PineconeRelevantDocs(query,5)
         Relevant_docs=RelevantDocsObject.HashIDFilterSearch(hash_ID)
-    
+
         #Concatenamos los documentos relevantes a role
         role = f""" /n Basa tu respuesta en estos documentos: /n {Relevant_docs['relevant_docs']}"""
         #Hacemos la consulta a OpenAI
@@ -257,18 +257,18 @@ class document_chat:
         final_response = self.GetWrapedResponse(model_response,Relevant_docs)
         print(f"La respuesta final es: {final_response}")
         return final_response
-    
-    
+
+
     def GetWrapedResponse(self,model_response,relevant_docs):
         final_response = f"{model_response} /n Fuentes:/n {relevant_docs['sources']}"
         return final_response
-        
+
     def get_relevant_documents(self):
-        
+
         try:
             print("Obteniendo documentos relevantes...")
-            embeddings = openai.embeddings.create(input=self.query, 
-                                                model="text-embedding-3-large", 
+            embeddings = openai.embeddings.create(input=self.query,
+                                                model="text-embedding-3-large",
                                                 dimensions=3072)
             #print(embeddings.data[0].embedding)
             relevant_vectors = embeddings.data[0].embedding
@@ -285,9 +285,9 @@ class document_chat:
             for docs in respuesta.matches:
                 relevant_docs += f"Documento {i}: {docs.metadata['text']} /n"
                 i+=1
-            role = f"""Eres"" un asistente que responde las preguntas del usuario basado en documentos relevante. 
+            role = f"""Eres"" un asistente que responde las preguntas del usuario basado en documentos relevante.
                       Estos son los documentos que tienes a disposicion: /n {relevant_docs}"""
-                
+
             # Generar una respuesta usando OpenAI
             openai.api_key = os.environ.get("OPENAI_API_KEY")
             client = OpenAI()
@@ -304,7 +304,7 @@ class document_chat:
         except Exception as e:
             print(f"Se produjo un error obteniendo documentos relevantes: {e}")
             return None
-    @staticmethod   
+    @staticmethod
     def evaluate_answer(useful,id_history_chat):
         print("Validando la respuesta...")
         conn= None
@@ -313,7 +313,7 @@ class document_chat:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             sql="""UPDATE chat_history SET useful = ? WHERE id_chat_history = ?"""
-            cursor.execute(sql,(useful,id_history_chat))            
+            cursor.execute(sql,(useful,id_history_chat))
             conn.commit()
             print("Entrada validada.")
             return True
