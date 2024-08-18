@@ -40,7 +40,7 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     'agorapythonapi.tunnelto.dev',
-    'https://app-backend-nextjs-284dd033bfea.herokuapp.com'
+    'app-backend-nextjs-284dd033bfea.herokuapp.com'
 ]
 
 
@@ -192,5 +192,5 @@ if os.getcwd()=='/app':
     DEBUG = False
     ALLOWED_HOSTS = [
         'agora-backend-94926b581cc3.herokuapp.com',
-        'https://app-backend-nextjs-284dd033bfea.herokuapp.com'
+        'app-backend-nextjs-284dd033bfea.herokuapp.com'
     ]
