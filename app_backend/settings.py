@@ -35,7 +35,12 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://agora-backend-94926b581cc3.herokuapp.com', 'localhost','127.0.0.1']
+ALLOWED_HOSTS = [
+    'https://agora-backend-94926b581cc3.herokuapp.com',
+    'localhost',
+    '127.0.0.1',
+    'agorapythonapi.tunnelto.dev'
+]
 
 
 # Application definition

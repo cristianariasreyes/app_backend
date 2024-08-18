@@ -149,37 +149,44 @@ def Getchat_assistant_detail(request, id):
 @api_view(['GET','POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def Get_chat_assistant_document(request):
-    if request.method == 'GET':
-        page_number = int(request.GET.get('page', 1))
-        items_per_page = int(request.GET.get('per_page', 6))
+    try:
+        if request.method == 'GET':
+            search_query = str(request.GET.get('search', '') or '')
+            page_number = int(request.GET.get('page', 1))
+            items_per_page = int(request.GET.get('per_page', 6))
 
-        # Obteniendo el queryset
-        assistants = Chat_assistant_documents.objects.all()
+            # Obteniendo el queryset
+            assistants = Chat_assistant_documents.objects.filter(
+                Q(id_document__name__icontains=search_query) |
+                Q(id_document__resume__icontains=search_query)
+            )
 
-        paginator = Paginator(assistants, items_per_page)
+            paginator = Paginator(assistants, items_per_page)
 
-        try:
-            page = paginator.page(page_number)
-        except PageNotAnInteger:
-            page = paginator.page(1)
-        except EmptyPage:
-            page = paginator.page(paginator.num_pages)
+            try:
+                page = paginator.page(page_number)
+            except PageNotAnInteger:
+                page = paginator.page(1)
+            except EmptyPage:
+                page = paginator.page(paginator.num_pages)
 
-        serializer = Chat_assistant_documentsSerializer(page.object_list, many=True)
-        return Response({
-            'current_page': page.number,
-            'total_pages': paginator.num_pages,
-            'items_per_page': items_per_page,
-            'items_total': paginator.count,
-            'data': serializer.data
-        })
+            serializer = Chat_assistant_documentsSerializer(page.object_list, many=True)
+            return Response({
+                'current_page': page.number,
+                'total_pages': paginator.num_pages,
+                'items_per_page': items_per_page,
+                'items_total': paginator.count,
+                'data': serializer.data
+            })
 
-    if request.method == 'POST':
-        serializer = Chat_assistant_documentsSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.method == 'POST':
+            serializer = Chat_assistant_documentsSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    except:
+        return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
@@ -207,7 +214,8 @@ def Get_chat_assistant_document_detail(request, id):
 
 
 
-@csrf_exempt
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def evaluate_answer(request):
     if request.method == 'POST':
         useful = request.POST.get('useful')
