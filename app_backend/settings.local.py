@@ -35,7 +35,7 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://agora-backend-94926b581cc3.herokuapp.com','localhost','127.0.0.1']
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS').split(' ')
 
 
 # Application definition
@@ -72,21 +72,21 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'app_backend.urls'
 
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, '../frontend/templates')],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
+# TEMPLATES = [
+#     {
+#         'BACKEND': 'django.template.backends.django.DjangoTemplates',
+#         'DIRS': [os.path.join(BASE_DIR, '../frontend/templates')],
+#         'APP_DIRS': True,
+#         'OPTIONS': {
+#             'context_processors': [
+#                 'django.template.context_processors.debug',
+#                 'django.template.context_processors.request',
+#                 'django.contrib.auth.context_processors.auth',
+#                 'django.contrib.messages.context_processors.messages',
+#             ],
+#         },
+#     },
+# ]
 
 
 WSGI_APPLICATION = 'app_backend.wsgi.application'
@@ -97,20 +97,13 @@ WSGI_APPLICATION = 'app_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'd292n2hu5jd95j',
-        'USER': 'ue0mrmghf0h4q8',
-        'PASSWORD': 'pdbfe053436251ab93e11eaf342c3d2d8671ace46e7b60c21cb44ad677c5c7f42',
-        'HOST': 'c8lj070d5ubs83.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com',
-        'PORT': '5432',
-        },
-    #'default': {
-    #    'ENGINE': 'django.db.backends.postgresql',
-    #    'NAME': 'agora',
-    #    'USER': 'agora_user',
-    #    'PASSWORD': 'agora_ser',
-    #    'HOST': 'localhost',
-    #    'PORT': '5432',
+       'ENGINE': os.getenv('SQL_ENGINE'),
+       'NAME': os.getenv('SQL_DATABASE'),
+       'USER': os.getenv('SQL_USER'),
+       'PASSWORD': os.getenv('SQL_PASSWORD'),
+       'HOST': os.getenv('SQL_HOST'),
+       'PORT': os.getenv('SQL_PORT'),
+    }
 }
 
 
@@ -171,13 +164,11 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=2),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 

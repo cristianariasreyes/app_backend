@@ -13,7 +13,7 @@ def GetDocument(request):
         documents = Document.objects.all()
         serializer = DocumentSerializer(documents, many=True)
         return Response(serializer.data)
-    
+
     if request.method == 'POST':
         serializer = DocumentSerializer(data=request.data)
         if serializer.is_valid():
@@ -32,21 +32,17 @@ def GetDocument_detail(request, id):
     if request.method == 'GET':
         serializer = DocumentSerializer(document)
         return Response(serializer.data)
-    
+
     if request.method == 'PUT':
         serializer = DocumentSerializer(document, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     if request.method == 'DELETE':
         document.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    
-    
-    
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
@@ -55,7 +51,7 @@ def document_type(request):
         document_types = Document_type.objects.all()
         serializer = Document_typeSerializer(document_types, many=True)
         return Response(serializer.data,status=status.HTTP_200_OK)
-    
+
     if request.method == 'POST':
         serializer = Document_typeSerializer(data=request.data)
         if serializer.is_valid():
@@ -74,14 +70,14 @@ def document_type_detail(request, id):
     if request.method == 'GET':
         serializer = Document_typeSerializer(document_types)
         return Response(serializer.data)
-    
+
     if request.method == 'PUT':
         serializer = Document_typeSerializer(document_types, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     if request.method == 'DELETE':
         document_types.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -93,7 +89,7 @@ def document_category(request):
         document_categories = Document_category.objects.all()
         serializer = Document_categorySerializer(document_categories, many=True)
         return Response(serializer.data)
-    
+
     if request.method == 'POST':
         serializer = Document_categorySerializer(data=request.data)
         if serializer.is_valid():
@@ -112,18 +108,18 @@ def document_category_detail(request, id):
     if request.method == 'GET':
         serializer = Document_categorySerializer(document_categories)
         return Response(serializer.data)
-    
+
     if request.method == 'PUT':
         serializer = Document_categorySerializer(document_categories, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     if request.method == 'DELETE':
         document_categories.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)    
-    
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def document_department(request):
@@ -131,7 +127,7 @@ def document_department(request):
         documents = Document_department.objects.all()
         serializer = Document_departmentSerializer(documents, many=True)
         return Response(serializer.data)
-    
+
     if request.method == 'POST':
         serializer = Document_departmentSerializer(data=request.data)
         if serializer.is_valid():
@@ -150,14 +146,14 @@ def document_department_detail(request, id):
     if request.method == 'GET':
         serializer = Document_departmentSerializer(document)
         return Response(serializer.data)
-    
+
     if request.method == 'PUT':
         serializer = Document_departmentSerializer(document, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     if request.method == 'DELETE':
         document.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)        
+        return Response(status=status.HTTP_204_NO_CONTENT)

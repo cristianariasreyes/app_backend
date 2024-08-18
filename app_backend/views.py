@@ -6,7 +6,11 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
+<<<<<<< HEAD
 from rest_framework.views import APIView
+=======
+from django.core.exceptions import ObjectDoesNotExist
+>>>>>>> 4765458c20f4a282f9659309d87570e7f13650d0
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -98,20 +102,20 @@ def RegisterUser(request):
     LoginObj = userSerializer(data=request.data)
     if LoginObj.is_valid():
         new_user = User.objects.create_user(
-            username=LoginObj.validated_data['username'], 
+            username=LoginObj.validated_data['username'],
             email=LoginObj.validated_data['email'])
         #Actualizamos la password
         new_user.set_password(LoginObj.validated_data['password'])
         new_user.save()
 
-        #Generamos el token de autorizacion        
-        refresh = RefreshToken.for_user(new_user) 
+        #Generamos el token de autorizacion
+        refresh = RefreshToken.for_user(new_user)
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
             'user': LoginObj.data
         }, status=status.HTTP_200_OK)
-        
+
     else:
         return Response(LoginObj.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -127,7 +131,7 @@ def LogOutUser(request):
         return Response('User logged out', status=status.HTTP_200_OK)
     except Exception as e:
         return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
-    
+
 @api_view(['POST'])
 def ProfileUser(request):
     return Response('Login page')
