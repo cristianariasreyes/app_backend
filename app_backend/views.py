@@ -24,14 +24,14 @@ def getRoutes(request):
         {'PUT': 'chat/assistant/<int:id>'},
         {'DELETE': 'chat/assistant/<int:id>'},
         
-        {'POST': 'chat_my_docs/<int:id>'},
-        {'POST': 'chat_with_assistant/<int:id>'},        
+        {'POST': 'chat/chat_my_docs/<int:id>'},
+        {'POST': 'chat/chat_with_assistant/<int:id>'},        
         
-        {'GET': 'chat_assistant_documents/'},
-        {'POST': 'chat_assistant_documents/'},
-        {'GET': 'chat_assistant_documents/<int:id>'},
-        {'PUT': 'chat_assistant_documents/<int:id>'},
-        {'DELETE': 'chat_assistant_documents/<int:id>'},
+        {'GET': 'chat/chat_assistant_documents/'},
+        {'POST': 'chat/chat_assistant_documents/'},
+        {'GET': 'chat/chat_assistant_documents/<int:id>'},
+        {'PUT': 'chat/chat_assistant_documents/<int:id>'},
+        {'DELETE': 'chat/chat_assistant_documents/<int:id>'},
 
         {'POST': 'chat/evaluate_answer/<int:id_chat_history>/<int:useful>'},
 
@@ -42,27 +42,34 @@ def getRoutes(request):
         {'PUT': 'documents/<int:id>'},
         {'DELETE': 'documents/<int:id>'},
 
-        {'GET': 'document_type/'},
-        {'POST': 'document_type/'},
-        {'GET': 'document_type/<int:id>'},
-        {'PUT': 'document_type/<int:id>'},
-        {'DELETE': 'document_type/<int:id>'},
+        {'GET': 'documents/document_type/'},
+        {'POST': 'documents/document_type/'},
+        {'GET': 'documents/document_type/<int:id>'},
+        {'PUT': 'documents/document_type/<int:id>'},
+        {'DELETE': 'documents/document_type/<int:id>'},
         
-        {'GET': 'document_category/'},
-        {'POST': 'document_category/'},
-        {'GET': 'document_category/<int:id>'},
-        {'PUT': 'document_category/<int:id>'},
-        {'DELETE': 'document_category/<int:id>'},
+        {'GET': 'documents/document_category/'},
+        {'POST': 'documents/document_category/'},
+        {'GET': 'documents/document_category/<int:id>'},
+        {'PUT': 'documents/document_category/<int:id>'},
+        {'DELETE': 'documents/document_category/<int:id>'},
         
-        {'GET': 'document_department/'},
-        {'POST': 'document_department/'},
-        {'GET': 'document_department/<int:id>'},
-        {'PUT': 'document_department/<int:id>'},
-        {'DELETE': 'document_department/<int:id>'},
+        {'GET': 'documents/document_department/'},
+        {'POST': 'documents/document_department/'},
+        {'GET': 'documents/document_department/<int:id>'},
+        {'PUT': 'documents/document_department/<int:id>'},
+        {'DELETE': 'documents/document_department/<int:id>'},
         
         {'POST': 'users/token'},	
         {'POST': 'users/token/refresh'},
+
+        {'GET': 'service_desk/get_categories/'},	
+        {'GET': 'service_desk/get_sentiment/'},	
+        {'GET': 'service_desk/mail_response/'},	
+        
+
     ]
+        
     return Response(routes)
 
 
@@ -70,16 +77,20 @@ def getRoutes(request):
 @api_view(['GET','POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def LoginUser(request):
-    user = get_object_or_404(User, username=request.data['username'])
-    if not user.check_password(request.data['password']):
-        return Response('Invalid password', status=status.HTTP_400_BAD_REQUEST)
+    if request.method == 'POST':
+        user = get_object_or_404(User, username=request.data['username'])
+    
+        if not user.check_password(request.data['password']):
+            return Response('Invalid password', status=status.HTTP_400_BAD_REQUEST)
+        else:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': request.data['username']
+            }, status=status.HTTP_200_OK)
     else:
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': request.data['username']
-        }, status=status.HTTP_200_OK)
+        return Response('Welcome!')
         
 @api_view(['GET','POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario

@@ -11,18 +11,22 @@ class ChatWithModels:
 
     def OpenAI_Chat(self, query, role):
         # Generar una respuesta usando OpenAI
-        client = OpenAI()
-        respuesta = client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": role},
-                {"role": "user", "content": query}
-            ],
-            temperature=self.temperature
-        )
-        print(respuesta.choices[0].message.content)
-        return respuesta.choices[0].message.content
-
+        try:
+            print(f"chateando con estos parametros: modelo: {self.model}, temperatura: {self.temperature}")
+            client = OpenAI()
+            respuesta = client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": role},
+                    {"role": "user", "content": query}
+                ],
+                temperature=self.temperature
+            )
+            print(respuesta.choices[0].message.content)
+            return respuesta.choices[0].message.content
+        except Exception as e:
+            print(e)
+            return f"error: No se pudo conectar con OpenAI: {e}"
 class PineconeRelevantDocs:
     def __init__(self, query, top_k=5):
         self.top_k = top_k

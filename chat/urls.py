@@ -9,7 +9,7 @@ urlpatterns = [
     path('chat_assistant_documents/', views.Get_chat_assistant_document, name='Get_chat_assistant_document'),  
     path('chat_assistant_documents/<int:id>', views.Get_chat_assistant_document_detail, name="Get_chat_assistant_document_detail"),
     path('chat_my_docs/<int:id>', views.chat_my_docs, name='chat_my_docs'),  
-    path('chat_with_assistant/<int:id>', views.chat_with_an_assistant, name='chat_with_an_assistant'),  
+    path('chat_with_assistant/<int:id>', views.ChatWithAssistantView.as_view(), name='chat_with_assistant'),  
     path('chat/evaluate_answer/<int:id_chat_history>/<int:useful>', views.evaluate_answer, name='evaluate_answer'),  
     
     

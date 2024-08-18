@@ -1,0 +1,89 @@
+document_type
+
+
+
+
+chat_assistant
+{
+"role":"Eeres un asistente que ayuda al usuario a postular en licitaciones de PlataformaGroup comercial. Debes ayudar al usuario a aclarar dudas sobre requisitos, plazos, montos y normativas a seguir para postular en una licitacion. Siempre debes asegurarte que el usuario provea el ID de la licitacion el cual será un identificador alfanumerico de mas de 5 caracteres.",
+"name":"Licitaciones PlataformaGroup",
+"llm_model":"GPT-4o mini"
+}
+
+chat_assistant_documents
+{
+"":"",
+
+}
+
+Document
+{
+    "subject": "Bases licitacion compra lansweeper para SUBREI",
+    "resume": "algo",
+    "document_path": "algo",
+    "id_vdb": "cafa46e6cbf2e9579564e509417f704b",
+    "name": "Bases_1153625-6-L124 (1).pdf",
+    "id_document_type": 1,
+    "id_document_category": 1,
+    "id_document_department": 1
+}
+
+document_type
+{
+"description":"pdf"
+
+}
+
+document_department
+{
+"description":"pdf"
+
+}
+
+chat_assistant_documents
+{
+"created_by" : 1,
+"id_chat_assistant" : 1,
+"id_document" : 1
+}
+
+
+{
+"message":"Dame un completo resumen de la licitacion 1153625-6-L124"
+}
+
+Register
+http://127.0.0.1:8000/register/
+{
+"username":"Tamara",
+"email":"tcgarcia21@gmail.com",
+"password":"tamara"
+}
+
+LOGIN
+http://127.0.0.1:8000/login/
+{
+"username":"Tamara",
+"password":"tamara"
+}
+
+LOGOUT
+http://127.0.0.1:8000/logout/
+{
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTcyMTcxMTQxMSwiaWF0IjoxNzIxNjI1MDExLCJqdGkiOiIwYzcxODY0YzcwYTk0YjZiOTdkZmE4NjJhOTcyODY4ZCIsInVzZXJfaWQiOjZ9.ih9EJ7jZfgWAdmzjKK85L0FiAxKhE4-jkoyeVXjLJvk
+
+access:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzIxNjI1MzExLCJpYXQiOjE3MjE2MjUwMTEsImp0aSI6ImQyZTUzNTUxNWQ5OTQwMjRiZjQ0ZDBkYmVmZWYxZjFlIiwidXNlcl9pZCI6Nn0.XNePsKRzU163bJ6USbH1HZ6HZpWvLLZNx9DyXUsW4jU
+}
+
+
+ESTRUCTURA DE CATEGORIES
+[
+{
+'name':'tipo_ticket',
+'value:'incidente'
+
+}
+
+
+]

@@ -7,7 +7,7 @@ from rest_framework import status
 
 
 @api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def GetDocument(request):
     if request.method == 'GET':
         documents = Document.objects.all()

@@ -211,13 +211,17 @@ class document_chat:
     def assistant_chat(self,id_assistant,query):
         #rescatamos de la tabla assistant
         print("Obteniendo asistente...")
-        chat_assistant = Chat_assistant.objects.get(id_chat_assistant=id_assistant)
-        #obtenemos el modelo, rol y temperatura
-        llm_model = chat_assistant.llm_model
-        temperature = chat_assistant.temperature
-        role = chat_assistant.role
-        print(f"Modelo:{llm_model} Temperatura:{temperature} Rol:{role}")
-        
+        #verificamos que exista el asistente con id_assistant
+        try:
+            chat_assistant = Chat_assistant.objects.get(id_chat_assistant=id_assistant)
+            #obtenemos el modelo, rol y temperatura
+            llm_model = chat_assistant.llm_model
+            temperature = chat_assistant.temperature
+            role = chat_assistant.role
+            print(f"Modelo:{llm_model} Temperatura:{temperature} Rol:{role}")
+        except Chat_assistant.DoesNotExist:
+            print(f"No se encontró el" + " asistente con id: {id_assistant}")
+            return f"No se encontró el asistente con id: {id_assistant}"
         #Obtenemos todos los documentos del asistente
         print("Obteniendo documentos del asistente...")
         chat_assistant_documents = Chat_assistant_documents.objects.filter(id_chat_assistant=id_assistant)

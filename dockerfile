@@ -1,5 +1,5 @@
 # Usa una imagen base de Python 3.11.2
-FROM python:3.11.2-slim
+FROM python:3.12.2-slim
 
 # Establece el directorio de trabajo en el contenedor
 WORKDIR /app/backend
@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 
 # Copia el archivo de requerimientos al contenedor
-COPY backend/requirements.txt /app/backend/
+COPY requirements.txt /app/backend/
 
 # Instala las dependencias
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt

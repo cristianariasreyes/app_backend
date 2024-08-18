@@ -14,13 +14,33 @@ from chat.services.chat_with_documents import document_chat
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 
+
+
+class ChatWithAssistantView(APIView):
+    permission_classes = [permissions.AllowAny]
+    def post(self, request, id):
+        data = request.data
+        pregunta = data.get('message')
+        try:
+            new_chat = document_chat()
+            respuesta = new_chat.assistant_chat(id,pregunta)
+        except Exception as e:
+            respuesta = {'result': str(e)}
+            return Response({'respuesta': respuesta}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'respuesta': respuesta})
+                    
+
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def chat_with_an_assistant(request,id):
     data = request.data
     pregunta = data.get('message')
-    new_chat = document_chat()
-    respuesta = new_chat.assistant_chat(id,pregunta)
+    try:
+        new_chat = document_chat()
+        respuesta = new_chat.assistant_chat(id,pregunta)
+    except Exception as e:
+        respuesta = {'result': str(e)}
+        return Response({'respuesta': respuesta}, status=status.HTTP_400_BAD_REQUEST)
     return Response({'respuesta': respuesta})
 
 @api_view(['POST'])
