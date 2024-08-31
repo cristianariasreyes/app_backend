@@ -25,9 +25,35 @@ from django.conf import settings
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def GetDocument(request):
     if request.method == "GET":
-        documents = Document.objects.all()
-        serializer = DocumentSerializer(documents, many=True)
-        return Response(serializer.data)
+        search_query = str(request.GET.get("search", "") or "")
+        page_number = int(request.GET.get("page", 1) or 1)
+        items_per_page = int(request.GET.get("per_page", 12) or 12)
+
+        assistants = Document.objects.filter(
+            Q(name__icontains=search_query)
+            | Q(subject__icontains=search_query)
+            | Q(resume__icontains=search_query)
+        )
+
+        paginator = Paginator(assistants, items_per_page)
+
+        try:
+            page = paginator.page(page_number)
+        except PageNotAnInteger:
+            page = paginator.page(1)
+        except EmptyPage:
+            page = paginator.page(paginator.num_pages)
+
+        serializer = DocumentSerializer(page.object_list, many=True)
+        return Response(
+            {
+                "current_page": page.number,
+                "total_pages": paginator.num_pages,
+                "items_per_page": items_per_page,
+                "items_total": paginator.count,
+                "data": serializer.data,
+            }
+        )
 
     if request.method == "POST":
         file = request.FILES["file"]
@@ -122,8 +148,6 @@ def document_type(request):
                 "data": serializer.data,
             }
         )
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
     if request.method == "POST":
         serializer = Document_typeSerializer(data=request.data)
