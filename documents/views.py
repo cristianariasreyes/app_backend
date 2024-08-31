@@ -22,7 +22,7 @@ from django.conf import settings
 
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([IsAuthenticated])  # Cambia a IsAuthenticated si es necesario
 def GetDocument(request):
     if request.method == "GET":
         search_query = str(request.GET.get("search", "") or "")
@@ -58,7 +58,7 @@ def GetDocument(request):
     if request.method == "POST":
         file = request.FILES["file"]
 
-        if not file:
+        if not file or not request.user.id:
             return Response(
                 {"error": "Bad request"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -71,13 +71,23 @@ def GetDocument(request):
         )
 
         try:
-            s3_client.upload_fileobj(file, settings.AWS_STORAGE_BUCKET_NAME, file.name)
             s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
             s3_url += f"/{settings.ENVIRONMENT_CUSTOM}/{file.name}"
 
+            s3_client.upload_fileobj(file, settings.AWS_STORAGE_BUCKET_NAME, f"{settings.ENVIRONMENT_CUSTOM}/{file.name}")
+
             # Actualizamos los datos antes de guardarlos
-            data = request.data.copy()
-            data["s3_document_path"] = s3_url
+            data = {
+                "name": request.data.get("name"),
+                "subject": request.data.get("subject"),
+                "resume": request.data.get("resume"),
+                "id_document_type": request.data.get("id_document_type"),
+                "id_document_category": request.data.get("id_document_category"),
+                "id_document_department": request.data.get("id_document_department"),
+                "s3_document_path": s3_url,
+                "owner": request.user.id
+            }
+
             serializer = DocumentSerializer(data=data)
 
             if serializer.is_valid():
