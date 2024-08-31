@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
 from django.http import HttpResponse
@@ -21,19 +22,20 @@ from . import views
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
-    TokenVerifyView
+    TokenVerifyView,
 )
+
 urlpatterns = [
-    path('', views.getRoutes, name='getRoutesss'),
-    path('register/', views.RegisterUser, name='register'),
-    path('login/', views.LoginUser, name='login'),
-    path('logout/', views.LogOutUser, name='logout'),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('token/access/', TokenVerifyView.as_view(), name='token_access'),
-    path('admin/', admin.site.urls),
-    path('chat/', include('chat.urls')),
-    path('documents/', include('documents.urls')),
-    path('assistants/', include('assistants.urls')),
-    path('agents/', include('agents.urls')),
+    path("", views.getRoutes, name="getRoutesss"),
+    path("register/", views.RegisterUser, name="register"),
+    path("login/", views.LoginUser, name="login"),
+    path("logout/", views.LogOutUser, name="logout"),
+    path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("token/access/", TokenVerifyView.as_view(), name="token_access"),
+    path("admin/", admin.site.urls),
+    path("chat/", include("chat.urls")),
+    path("documents/", include("documents.urls")),
+    path("assistants/", include("assistants.urls")),
+    path("agents/", include("agents.urls")),
 ]
