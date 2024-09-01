@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 
 
-class DocumentsConfig(AppConfig):
+class AgentsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "documents"
+    name = "agents"
+    verbose_name = "agents"

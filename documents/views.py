@@ -1,86 +1,142 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from .serializers import DocumentSerializer, Document_typeSerializer, Document_departmentSerializer, Document_categorySerializer
+from .serializers import (
+    DocumentSerializer,
+    Document_typeSerializer,
+    Document_departmentSerializer,
+    Document_categorySerializer,
+)
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from documents.models import Document_type, Document_department, Document_category, Document
+from documents.models import (
+    Document_type,
+    Document_department,
+    Document_category,
+    Document,
+)
 from rest_framework import status
 from document_services import document as PineconeDocs
-from django.db import transaction
+from django.db import transactionfrom django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Q
+import boto3
+from botocore.exceptions import NoCredentialsError
+from django.conf import settings
 
-@api_view(['POST'])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
-def SaveDocument(request):
-    serializer = DocumentSerializer(data=request.data, files=request.FILES)
-    
-    # Verificar si el archivo PDF está presente
-    pdf_file = request.FILES.get('pdf')
-    if not pdf_file:
-        return Response({'error': 'PDF file is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Verificar si los datos requeridos están presentes
-    required_fields = ['category', 'owner', 'identifier', 'company', 'subject', 'department']
-    for field in required_fields:
-        if field not in request.data:
-            return Response({'error': f'{field} is required'}, status=status.HTTP_400_BAD_REQUEST)
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])  # Cambia a IsAuthenticated si es necesario
+def GetDocument(request):
+    if request.method == "GET":
+        search_query = str(request.GET.get("search", "") or "")
+        page_number = int(request.GET.get("page", 1) or 1)
+        items_per_page = int(request.GET.get("per_page", 12) or 12)
 
-    if serializer.is_valid():
-        # Recuperamos los campos necesarios
-        category = request.data.get('category')
-        owner = request.data.get('owner')
-        identifier = request.data.get('identifier')
-        company = request.data.get('company')
-        subject = request.data.get('subject')
-        department = request.data.get('department')
+        assistants = Document.objects.filter(
+            Q(name__icontains=search_query)
+            | Q(subject__icontains=search_query)
+            | Q(resume__icontains=search_query)
+        )
+
+        paginator = Paginator(assistants, items_per_page)
 
         try:
-            with transaction.atomic():  # Usamos transacciones para asegurar atomicidad
-                new_document = PineconeDocs(pdf_file, category, owner, identifier, company, subject, department)
-                document_UUID = new_document.save_document()
-                
-                # Guardamos en la base de datos solo si Pinecone fue exitoso
+            page = paginator.page(page_number)
+        except PageNotAnInteger:
+            page = paginator.page(1)
+        except EmptyPage:
+            page = paginator.page(paginator.num_pages)
+
+        serializer = DocumentSerializer(page.object_list, many=True)
+        return Response(
+            {
+                "current_page": page.number,
+                "total_pages": paginator.num_pages,
+                "items_per_page": items_per_page,
+                "items_total": paginator.count,
+                "data": serializer.data,
+            }
+        )
+
+    if request.method == "POST":
+        print(request.FILES);
+
+        if "file" not in request.FILES:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        file = request.FILES["file"]
+
+        if not file or not request.user.id:
+            return Response(
+                {"error": "Bad request"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        )
+
+        try:
+            s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+            s3_url += f"/{settings.ENVIRONMENT_CUSTOM}/{file.name}"
+
+            s3_client.upload_fileobj(file, settings.AWS_STORAGE_BUCKET_NAME, f"{settings.ENVIRONMENT_CUSTOM}/{file.name}")
+
+            # Actualizamos los datos antes de guardarlos
+            data = {
+                "name": request.data.get("name"),
+                "subject": request.data.get("subject"),
+                "resume": request.data.get("resume"),
+                "id_document_type": request.data.get("id_document_type"),
+                "id_document_category": request.data.get("id_document_category"),
+                "id_document_department": request.data.get("id_document_department"),
+                "s3_document_path": s3_url,
+                "owner": request.user.id
+            }
+
+            serializer = DocumentSerializer(data=data)
+
+            if serializer.is_valid():
                 serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except NoCredentialsError:
+            return Response(
+                {"error": "Credentials not available"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-        except Exception as e:
-            # Intentar eliminar el documento de Pinecone en caso de error
-            try:
-                new_document.delete_document(document_UUID)
-            except Exception as delete_error:
-                return Response({
-                    'error': f'Error deleting document in Pinecone: {delete_error}',
-                    'original_error': str(e)
-                }, status=status.HTTP_400_BAD_REQUEST)
-            return Response({'error': f'Error saving document: {e}'}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['GET'])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
-def GetDocument(request):
-    if request.method == 'GET':
-        documents = Document.objects.all()
-        serializer = DocumentSerializer(documents, many=True)
-        return Response(serializer.data)
-
-@api_view(['GET', 'PUT', 'DELETE'])
+@api_view(["GET", "PUT", "DELETE"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def DocumentHandle(request, id):
     try:
         document = Document.objects.get(id=id)
     except Document.DoesNotExist:
-        return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
+        )
 
-    if request.method == 'GET':
+    if request.method == "GET":
         serializer = DocumentSerializer(document)
         return Response(serializer.data)
 
-    if request.method == 'PUT':
-        serializer = DocumentSerializer(document, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if request.method == "PUT":
+        try:
+            data = request.data.copy()
+
+            if not data.get('document_path'):
+                data['document_path'] = 'null'
+            if not data.get('id_vdb'):
+                data['id_vdb'] = 0
+
+            serializer = DocumentSerializer(document, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if request.method == 'DELETE':
         try:
@@ -89,116 +145,200 @@ def DocumentHandle(request, id):
             return Response({'error': f'Error deleting document in database: {e}'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-@api_view(['GET', 'POST'])
+
+@api_view(["GET", "POST"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def document_type(request):
-    if request.method == 'GET':
-        document_types = Document_type.objects.all()
-        serializer = Document_typeSerializer(document_types, many=True)
-        return Response(serializer.data,status=status.HTTP_200_OK)
+    if request.method == "GET":
+        search_query = str(request.GET.get("search", "") or "")
+        page_number = int(request.GET.get("page", 1) or 1)
+        items_per_page = int(request.GET.get("per_page", 12) or 12)
 
-    if request.method == 'POST':
+        assistants = Document_type.objects.filter(
+            Q(description__icontains=search_query)
+        )
+
+        paginator = Paginator(assistants, items_per_page)
+
+        try:
+            page = paginator.page(page_number)
+        except PageNotAnInteger:
+            page = paginator.page(1)
+        except EmptyPage:
+            page = paginator.page(paginator.num_pages)
+
+        serializer = Document_typeSerializer(page.object_list, many=True)
+        return Response(
+            {
+                "current_page": page.number,
+                "total_pages": paginator.num_pages,
+                "items_per_page": items_per_page,
+                "items_total": paginator.count,
+                "data": serializer.data,
+            }
+        )
+
+    if request.method == "POST":
         serializer = Document_typeSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'PUT', 'DELETE'])
+
+@api_view(["GET", "PUT", "DELETE"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def document_type_detail(request, id):
     try:
         document_types = Document_type.objects.get(id_document_type=id)
     except Document_type.DoesNotExist:
-        return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
+        )
 
-    if request.method == 'GET':
+    if request.method == "GET":
         serializer = Document_typeSerializer(document_types)
         return Response(serializer.data)
 
-    if request.method == 'PUT':
+    if request.method == "PUT":
         serializer = Document_typeSerializer(document_types, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'DELETE':
+    if request.method == "DELETE":
         document_types.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-@api_view(['GET', 'POST'])
+
+@api_view(["GET", "POST"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def document_category(request):
-    if request.method == 'GET':
-        document_categories = Document_category.objects.all()
-        serializer = Document_categorySerializer(document_categories, many=True)
-        return Response(serializer.data)
+    if request.method == "GET":
+        search_query = str(request.GET.get("search", "") or "")
+        page_number = int(request.GET.get("page", 1) or 1)
+        items_per_page = int(request.GET.get("per_page", 12) or 12)
 
-    if request.method == 'POST':
+        assistants = Document_category.objects.filter(
+            Q(description__icontains=search_query)
+        )
+
+        paginator = Paginator(assistants, items_per_page)
+
+        try:
+            page = paginator.page(page_number)
+        except PageNotAnInteger:
+            page = paginator.page(1)
+        except EmptyPage:
+            page = paginator.page(paginator.num_pages)
+
+        serializer = Document_categorySerializer(page.object_list, many=True)
+        return Response(
+            {
+                "current_page": page.number,
+                "total_pages": paginator.num_pages,
+                "items_per_page": items_per_page,
+                "items_total": paginator.count,
+                "data": serializer.data,
+            }
+        )
+
+    if request.method == "POST":
         serializer = Document_categorySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'PUT', 'DELETE'])
+
+@api_view(["GET", "PUT", "DELETE"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def document_category_detail(request, id):
     try:
         document_categories = Document_category.objects.get(id_document_category=id)
     except Document_category.DoesNotExist:
-        return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
+        )
 
-    if request.method == 'GET':
+    if request.method == "GET":
         serializer = Document_categorySerializer(document_categories)
         return Response(serializer.data)
 
-    if request.method == 'PUT':
+    if request.method == "PUT":
         serializer = Document_categorySerializer(document_categories, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'DELETE':
+    if request.method == "DELETE":
         document_categories.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-@api_view(['GET', 'POST'])
+
+@api_view(["GET", "POST"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def document_department(request):
-    if request.method == 'GET':
-        documents = Document_department.objects.all()
-        serializer = Document_departmentSerializer(documents, many=True)
-        return Response(serializer.data)
+    if request.method == "GET":
+        search_query = str(request.GET.get("search", "") or "")
+        page_number = int(request.GET.get("page", 1) or 1)
+        items_per_page = int(request.GET.get("per_page", 12) or 12)
 
-    if request.method == 'POST':
+        document_departamens = Document_department.objects.filter(
+            Q(description__icontains=search_query)
+        )
+
+        paginator = Paginator(document_departamens, items_per_page)
+
+        try:
+            page = paginator.page(page_number)
+        except PageNotAnInteger:
+            page = paginator.page(1)
+        except EmptyPage:
+            page = paginator.page(paginator.num_pages)
+
+        serializer = Document_departmentSerializer(page.object_list, many=True)
+        return Response(
+            {
+                "current_page": page.number,
+                "total_pages": paginator.num_pages,
+                "items_per_page": items_per_page,
+                "items_total": paginator.count,
+                "data": serializer.data,
+            }
+        )
+
+    if request.method == "POST":
         serializer = Document_departmentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'PUT', 'DELETE'])
+
+@api_view(["GET", "PUT", "DELETE"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def document_department_detail(request, id):
     try:
         document = Document_department.objects.get(id_document_department=id)
     except Document_department.DoesNotExist:
-        return Response({'error': 'Document not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
+        )
 
-    if request.method == 'GET':
+    if request.method == "GET":
         serializer = Document_departmentSerializer(document)
         return Response(serializer.data)
 
-    if request.method == 'PUT':
+    if request.method == "PUT":
         serializer = Document_departmentSerializer(document, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'DELETE':
+    if request.method == "DELETE":
         document.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

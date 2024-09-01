@@ -6,35 +6,37 @@ import uuid
 
 class Document_type(models.Model):
     id_document_type = models.AutoField(primary_key=True)
-    description = models.CharField(max_length=200,default='',blank=False)
-    
+    description = models.CharField(max_length=200, default="", blank=False)
+
     class Meta:
-        db_table = 'document_type'
-    
+        db_table = "document_type"
+
     def __str__(self):
         return self.description
 
 
 class Document_department(models.Model):
     id_document_department = models.AutoField(primary_key=True)
-    description = models.CharField(max_length=200,default='',blank=False)
-    
+    description = models.CharField(max_length=200, default="", blank=False)
+
     class Meta:
-        db_table = 'document_department'
-    
+        db_table = "document_department"
+
     def __str__(self):
         return self.description
 
+
 class Document_category(models.Model):
     id_document_category = models.AutoField(primary_key=True)
-    description = models.CharField(max_length=200,default='',blank=False)
-    
+    description = models.CharField(max_length=200, default="", blank=False)
+
     class Meta:
-        db_table = 'document_category'
-    
+        db_table = "document_category"
+
     def __str__(self):
         return self.description
-    
+
+
 class Document(models.Model):
     id_document = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     subject = models.CharField(max_length=200,default='',blank=False)
@@ -49,8 +51,8 @@ class Document(models.Model):
     last_update = models.DateTimeField(default=now,auto_now=True)
     
     class Meta:
-        db_table = 'document'
-    
+        db_table = "document"
+
     def __str__(self):
         return self.document_name
 

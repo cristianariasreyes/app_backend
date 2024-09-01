@@ -2,7 +2,9 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
 import os
+
 load_dotenv()
+
 
 class ChatWithModels:
     def __init__(self, model="gpt-4o-mini", temperature=0.5):
@@ -37,17 +39,20 @@ class PineconeRelevantDocs:
             print("generando la instancia de OpenAi")
             cliente = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
             print(f"HashID a consultar:{hash_IDs}")
-            response = cliente.embeddings.create(input=self.query, 
-                                                model="text-embedding-3-large", 
-                                                dimensions=3072)
+            response = cliente.embeddings.create(
+                input=self.query, model="text-embedding-3-large", dimensions=3072
+            )
             relevant_vectors = response.data[0].embedding
-            pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"),)
+            pc = Pinecone(
+                api_key=os.environ.get("PINECONE_API_KEY"),
+            )
             index = pc.Index(name="agora")
             respuesta = index.query(
-                                    vector=relevant_vectors,
-                                    top_k=5,
-                                    include_metadata=True,
-                                    filter={'hash_ID': {'$in': hash_IDs}})        
+                vector=relevant_vectors,
+                top_k=5,
+                include_metadata=True,
+                filter={"hash_ID": {"$in": hash_IDs}},
+            )
         except Exception as e:
             print(e)
             return {"error": "No se pudo conectar con Pinecone"}
@@ -56,13 +61,13 @@ class PineconeRelevantDocs:
         relevant_docs = ""
         original_source = []
         i = 1
-        for docs in respuesta['matches']:
+        for docs in respuesta["matches"]:
             relevant_docs += f"Documento {i}: {docs['metadata']['text']} /n"
-            #añadimos la source si no esta repetida
-            if docs['metadata']['name'] not in original_source:
-                original_source.append(docs['metadata']['name'])
-                
+            # añadimos la source si no esta repetida
+            if docs["metadata"]["name"] not in original_source:
+                original_source.append(docs["metadata"]["name"])
+
             i += 1
-        response ={'relevant_docs':relevant_docs,'sources' :original_source}
+        response = {"relevant_docs": relevant_docs, "sources": original_source}
         print(original_source)
         return response
