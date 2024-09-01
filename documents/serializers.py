@@ -9,6 +9,17 @@ from documents.models import (
 
 
 class DocumentSerializer(serializers.ModelSerializer):
+
+    document_category_name = serializers.CharField(
+        source="id_document_category.description", read_only=True
+    )
+    document_department_name = serializers.CharField(
+        source="id_document_department.description", read_only=True
+    )
+    document_type_name = serializers.CharField(
+        source="id_document_type.description", read_only=True
+    )
+
     class Meta:
         model = Document
         fields = "__all__"

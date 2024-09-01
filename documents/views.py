@@ -56,6 +56,11 @@ def GetDocument(request):
         )
 
     if request.method == "POST":
+        print(request.FILES);
+
+        if "file" not in request.FILES:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
         file = request.FILES["file"]
 
         if not file or not request.user.id:
@@ -116,11 +121,21 @@ def GetDocument_detail(request, id):
         return Response(serializer.data)
 
     if request.method == "PUT":
-        serializer = DocumentSerializer(document, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = request.data.copy()
+
+            if not data.get('document_path'):
+                data['document_path'] = 'null'
+            if not data.get('id_vdb'):
+                data['id_vdb'] = 0
+
+            serializer = DocumentSerializer(document, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if request.method == "DELETE":
         document.delete()
