@@ -6,19 +6,15 @@ from dotenv import load_dotenv
 from langchain_pinecone import PineconeVectorStore
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_core.documents import Document
-import hashlib 
+import uuid
 
 from openai import OpenAI
 
 load_dotenv()
 
 class document:
-    def __init__(self, document_file, category, owner,identifier,company,subject,department,record_type):
+    def __init__(self, document_file, category, owner,identifier,company,subject,department):
         self.content = ""  
-        if record_type == "documento":
-            self.file_type = document_file.filename.split(".")[-1]
-        if record_type == "transcription":
-            self.file_type = "txt"
         self.subject = ""
         self.name = ""
         self.category = category
@@ -28,69 +24,49 @@ class document:
         self.document_file = document_file
         self.subject = subject
         self.department = department
-        self.record_type = record_type
         self.metadata_field_info = ""
         #cargamos el documento
         read_document = None
-        self.hash_ID = ""
+        self.UUID = ""
         
         try:
-            if self.file_type == "pdf":
-                read_document = PdfReader(self.document_file)
-        
-                content = ""
-                self.name = self.document_file.filename
-                for page in range(len(read_document.pages)):
-                    pageObj = read_document.pages[page]
-                    content += pageObj.extract_text()
-            
-            if self.file_type == "txt":
-                try:
-                    #abrimos y leemos el archivo que tiene nombre document_file que esta en el directorio transcripciones
-                    with open("transcripciones/borradores/"+self.document_file, "r") as file:
-                        content = file.read()
-                        self.name = self.document_file
-                        #cerramos el archivo
-                        file.close()
-                        #una vez leido el archivo, lo pasamos a la carpeta transcripciones
-                        os.rename(self.document_file, f"transcripciones/{self.document_file}")
-                        
-                except Exception as e:
-                    raise Exception(f"Se produjo un error cargando el documento: {e}")
+            read_document = PdfReader(self.document_file)
+            content = ""
+            self.name = self.document_file.filename
+            for page in range(len(read_document.pages)):
+                pageObj = read_document.pages[page]
+                content += pageObj.extract_text()
             self.content = content
-            print("creando un hash ID del documento...")
-            self.hash_ID = hashlib.md5(self.content.encode()).hexdigest()
-            print(f"Hash ID del documento: {self.hash_ID}")
-            
+            #Creamos un UUID
+            self.UUID = str(uuid.uuid4())
         except Exception as e:
             raise Exception(f"Se produjo un error cargando el documento: {e}")
        
 
     def __str__(self) -> str:
         return f""" Nombre: {self.name}\n
-                    Extension del archivo: {self.file_type}\n
                     Asunto: {self.subject}\n
                     Dueño: {self.owner}\n
                     Categoria: {self.category}\n
-                    identificador: {self.identifier}      
-                    company: {self.company}          
-                """
+                    Identificador: {self.identifier}\n      
+                    Company: {self.company}\n
+                    Content : {self.content}\n
+                    UUID: {self.UUID}
+                    """
     #Inserta un documento en la base de datos de pinecone
     def save_document(self):
         print(f"content:{self.content}")
         
         #preparamos el metadata para insertarlo al documento
         doc_metadata=f"""<metadata>
-                            record_type:{self.record_type},
                             name:{self.name},
                             subject:{self.subject},
                             category:{self.category},
                             owner:{self.owner},
                             identifier:{self.identifier},
-                            file_type:{self.file_type},
                             company:{self.company},
                             department:{self.department},
-                            hash_ID:{self.hash_ID},
+                            UUID:{self.UUID},
                         </metadata>"""
         self.content = doc_metadata + self.content
         try:
@@ -103,7 +79,6 @@ class document:
             chunks = text_splitter.split_text(self.content)        
             print(f"Se dividió el texto en {len(chunks)} chunks")
             #Creamos los embeddings
-            #embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
             print("Creando los embeddings...")
             embeddings = OpenAIEmbeddings(api_key=os.environ.get("OPENAI_API_KEY"),
                                           model='text-embedding-3-large', dimensions=3072)
@@ -113,38 +88,46 @@ class document:
             #Guardamos la metadata en el el vector de pinecone
 
             
-            
             print("Guardando el documento y la metadata en el vector de pinecone...")
             documento=[]
             i=1
             for chunk in chunks:
                 documento.append(Document(page_content=chunk,metadata={
-                    "record_type":self.record_type,
                     "name":self.name,
                     "subject":self.subject,
                     "category":self.category,
                     "owner":self.owner,
                     "identifier":self.identifier,
-                    "file_type":self.file_type,
                     "company":self.company,
                     "department":self.department,
-                    "hash_ID":self.hash_ID
+                    "UUID":self.UUID
                     }))       
-            
                 print(f"Chunk {i} se guardó correctamente. ")
                 i+=1
-            PineconeVectorStore.from_documents(documento,embeddings,index_name="agora")
-            print("Documento guardado completamente.")   
-            self.save_document_record(self.name)
+            PineconeVectorStore.from_documents(documento,embeddings,index_name="agorachat",namespace="agorachat")
+            print("Documento guardado completamente.")
+            return self.UUID
         except Exception as e:
             raise Exception(f"Se produjo un error guardando el documento: {e}")
          
     #def delete_document(id_document):
-        
+    def delete_document(self,UUID):
+        try:
+            pc = Pinecone(api_key="PINECONE_API_KEY")
+            index = pc.Index("agorachat")
+            index.delete(
+                filter={
+                    "UUID": {"$eq": UUID}
+                }
+            )          
+        except Exception as e:
+            raise Exception(f"Se produjo un error eliminando el documento: {e}")
+        return 'El documento se ha eliminado correctamente'
+      
     @classmethod
     def list_documents(cls, query):
         pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
-        index = pc.Index("agora")
+        index = pc.Index("agorachat")
         embeddings = OpenAIEmbeddings(api_key=os.environ.get("OPENAI_API_KEY"),model='text-embedding-3-large', dimensions=3072)
         vector = OpenAIEmbeddings.embed_query(embeddings, query)
         result = index.query(filter={'record_type': {'$eq': query}}, vector=vector, include_metadata=True, top_k=100)

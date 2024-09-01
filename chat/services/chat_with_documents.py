@@ -36,7 +36,6 @@ class document_chat:
         self.pdf_id_document = pdf_id_document
         self.pdf_document = pdf_document
         self.conversation_hash = conversation_hash
-
     def get_prompt(self,query):
         print("Armando el prompt...")
         try:
@@ -118,7 +117,7 @@ class document_chat:
                 type="string"
             )
         ]
-    def basic_chat_with_memory(self):
+    def basic_chat_with_memory(self,user_prompt):
         print("Creando un vector store...")
         vector_store = PineconeVectorStore.from_existing_index(index_name="agora",embedding=self.embeddings)
 
@@ -128,7 +127,7 @@ class document_chat:
         if memory_chat==[]:
             memory_chat.append(("",""))
         #Invocamos el prompt
-        self.prompt = self.get_prompt(self.query)
+        self.prompt = self.get_prompt(user_prompt)
 
         print("Obteniendo una respuesta con historial...")
         try:
@@ -141,10 +140,10 @@ class document_chat:
                 retriever=retriever,
                 return_source_documents=True)
 
-            memory_chat.append(HumanMessage(content="Humano: "+ self.query))
+            memory_chat.append(HumanMessage(content="Humano: "+ user_prompt))
             result = qa({"question":self.prompt,"chat_history":memory_chat})
             #agregamos la respuesta al historial
-            id_chat_history = self.add_entry_to_history(self.query,result["answer"])
+            id_chat_history = self.add_entry_to_history(user_prompt,result["answer"])
             print(f"Historial:{memory_chat}")
             print(f"Respuesta: {result['answer']}")
             #enviamos la respuesta y el id_chat_history en un diccionario
@@ -240,7 +239,7 @@ class document_chat:
         model_response = chat.OpenAI_Chat(query,role)
         final_response = f"{model_response} /n Fuentes:/n {Relevant_docs['sources']}"
         print(f"La respuesta final es: {final_response}")
-        return final_response
+        return {'content':final_response,'id_chat_history':0}
 
     def ChatSingleDoc(self,id_document,query):
         #Obtenemos el id_vdb del documento
@@ -260,7 +259,7 @@ class document_chat:
         model_response = chat.OpenAI_Chat(query,role)
         final_response = self.GetWrapedResponse(model_response,Relevant_docs)
         print(f"La respuesta final es: {final_response}")
-        return final_response
+        return {'content':final_response,'id_chat_history':0}
 
 
     def GetWrapedResponse(self,model_response,relevant_docs):

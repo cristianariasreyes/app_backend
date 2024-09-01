@@ -6,11 +6,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from rest_framework_simplejwt.tokens import RefreshToken
-<<<<<<< HEAD
 from rest_framework.views import APIView
-=======
-from django.core.exceptions import ObjectDoesNotExist
->>>>>>> 4765458c20f4a282f9659309d87570e7f13650d0
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

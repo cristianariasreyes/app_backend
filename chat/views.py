@@ -45,7 +45,7 @@ def chat_with_an_assistant(request,id):
     except Exception as e:
         respuesta = {'result': str(e)}
         return Response({'respuesta': respuesta}, status=status.HTTP_400_BAD_REQUEST)
-    return Response({'respuesta': respuesta})
+    return Response({'respuesta': respuesta['content'], 'id_chat_history': respuesta['id_chat_history']})
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
