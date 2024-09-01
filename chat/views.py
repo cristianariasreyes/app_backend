@@ -180,7 +180,7 @@ def Getchat_assistant_detail(request, id):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([IsAuthenticated])  # Cambia a IsAuthenticated si es necesario
 def Get_chat_assistant_document(request):
     try:
         if request.method == "GET":
@@ -215,7 +215,16 @@ def Get_chat_assistant_document(request):
             )
 
         if request.method == "POST":
-            serializer = Chat_assistant_documentsSerializer(data=request.data)
+            if not request.user.id:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Hacemos una copia de los datos y agregamos el campo created_by
+            data = request.data.copy()
+            data["created_by"] = request.user.id
+
+            # Pasamos la copia modificada al serializador
+            serializer = Chat_assistant_documentsSerializer(data=data)
+
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)

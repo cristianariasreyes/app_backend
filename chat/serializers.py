@@ -39,6 +39,7 @@ class Chat_assistant_documentsSerializer(serializers.ModelSerializer):
     id_chat_assistant_name = serializers.CharField(
         source="id_chat_assistant.name", read_only=True
     )
+    created_by_name = serializers.CharField(source="created_by.email", read_only=True)
 
     class Meta:
         model = Chat_assistant_documents
