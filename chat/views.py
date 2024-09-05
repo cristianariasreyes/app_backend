@@ -1,3 +1,4 @@
+import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
@@ -187,12 +188,26 @@ def Get_chat_assistant_document(request):
             search_query = str(request.GET.get("search", "") or "")
             page_number = int(request.GET.get("page", 1))
             items_per_page = int(request.GET.get("per_page", 6))
+            filters = str(request.GET.get("filters", "") or "")
+
+            filter_list = json.loads(filters) if filters else []
 
             # Obteniendo el queryset
             assistants = Chat_assistant_documents.objects.filter(
                 Q(id_document__name__icontains=search_query)
                 | Q(id_document__resume__icontains=search_query)
             )
+
+            # Aplicar los filtros dinámicamente
+            # TODO: ESTO HAY QUE REPLICARLO, LO MEJOR ES USAR UN UTIL
+            for filter_item in filter_list:
+                field = filter_item.get("id")
+                value = filter_item.get("value")
+
+                if field and value:
+                    # Crear dinámicamente el filtro
+                    filter_kwargs = {f"{field}": value}
+                    assistants = assistants.filter(**filter_kwargs)
 
             paginator = Paginator(assistants, items_per_page)
 
