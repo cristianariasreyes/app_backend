@@ -19,6 +19,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     document_type_name = serializers.CharField(
         source="id_document_type.description", read_only=True
     )
+    owner_by_name = serializers.CharField(source="owner.email", read_only=True)
 
     class Meta:
         model = Document
