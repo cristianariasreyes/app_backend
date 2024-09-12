@@ -142,26 +142,6 @@ def LoginUser(request):
         status=status.HTTP_200_OK,
     )
 
-
-@api_view(["POST", "GET"])
-@api_view(['GET','POST'])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
-def LoginUser(request):
-    if request.method == 'POST':
-        user = get_object_or_404(User, username=request.data['username'])
-    
-        if not user.check_password(request.data['password']):
-            return Response('Invalid password', status=status.HTTP_400_BAD_REQUEST)
-        else:
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': request.data['username']
-            }, status=status.HTTP_200_OK)
-    else:
-        return Response('Welcome!')
-        
 @api_view(['GET','POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def RegisterUser(request):

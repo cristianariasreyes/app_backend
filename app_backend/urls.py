@@ -36,6 +36,4 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("chat/", include("chat.urls")),
     path("documents/", include("documents.urls")),
-    path("assistants/", include("assistants.urls")),
-    path("agents/", include("agents.urls")),
 ]

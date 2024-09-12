@@ -13,7 +13,11 @@ from django.conf import settings
 from botocore.exceptions import NoCredentialsError
 from openai import OpenAI
 from chat.services.chat_tools import ChatWithModels
-
+from documents.models import (
+    Document_type,
+    Document_department,
+    Document_category
+)
 load_dotenv()
 
 
@@ -36,6 +40,8 @@ class document:
     #Inserta un documento en la base de datos de pinecone
     def SaveDocument(self):
         try:
+
+            
             self.data['document_name'] = self.uploaded_file.name
             self.data['company_id'] = "DemoPLG"
             self.data['id_document'] = self.CreateUUID()
@@ -51,6 +57,11 @@ class document:
     def SavePineconeDocument(self,content,namespace):
         try:
             print("Dividiendo el texto en chunks...")
+            #Obtenemos el nombre de la categoria, el tipo de documento y el departamento
+            category = Document_category.objects.get(id_document_category=self.data['id_document_category'])
+            department = Document_department.objects.get(id_document_department= self.data['id_document_department'])
+            document_type = Document_type.objects.get(id_document_type= self.data['id_document_type'])
+            
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=2000, chunk_overlap=200, length_function=len
             )
@@ -76,11 +87,11 @@ class document:
                 documento.append(Document(page_content=chunk,metadata={
                     "name":self.data['document_name'],
                     "subject":self.data['subject'],
-                    "category":self.data['document_category_name'],
+                    "category":category,
                     "owner":self.data['owner'],
-                    "department":self.data['document_department_name'],
+                    "department":department,
                     "id_document":self.data['id_document'],
-                    "document_type":self.data['document_type_name'],
+                    "document_type":document_type,
                     "resume":self.data['resume']
                     }))       
                 print(f"Chunk {i} se guardó correctamente. ")
@@ -189,7 +200,7 @@ class document:
         return DOC_UUID
 
     def CreateResume(self,content):
-        role="""Eres un experto resumiendo documentos. Debes generar un resumen de no mas de 500 caracteres del documento
+        role="""Eres un experto resumiendo documentos. Debes generar un resumen de no mas de 1000 caracteres del documento
         completo que se te proporciona"""
         
         prompt = f"Documento completo: {content}"
