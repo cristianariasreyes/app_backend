@@ -183,7 +183,7 @@ def Getchat_assistant_detail(request, id):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def Get_chat_assistant_document(request):
     try:
         if request.method == "GET":
