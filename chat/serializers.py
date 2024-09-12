@@ -28,6 +28,8 @@ class Chat_sessionSerializer(serializers.ModelSerializer):
 
 
 class Chat_assistantSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.email", read_only=True)
+
     class Meta:
         model = Chat_assistant
         fields = "__all__"
