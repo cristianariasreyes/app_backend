@@ -102,7 +102,7 @@ class document:
         s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{s3_file_path}"
 
         try:
-            print(f"Subiendo el archivo a AWS S3 en la ruta: {s3_file_path}")
+            print(f"Subiendo el archivo a AWS S3 en la ruta: {s3_url}")
             s3_client.upload_fileobj(self.uploaded_file, settings.AWS_STORAGE_BUCKET_NAME, s3_file_path)  # Subir archivo
             print("El archivo se subió correctamente a AWS S3")
             return s3_url

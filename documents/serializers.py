@@ -25,18 +25,8 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Document
-        fields = [
-            'subject',
-            'id_document_department',
-            'id_document_category',
-            'id_document_type',
-            'owner',
-            'file',  # Si necesitas el archivo en la solicitud
-            'document_category_name',  # Campo de solo lectura
-            'document_department_name',  # Campo de solo lectura
-            'document_type_name',  # Campo de solo lectura
-            'owner_by_name',  # Campo de solo lectura
-            ]
+        fields = "__all__"
+
     
     def validate(self, data):
         # Validaciones personalizadas, si las necesitas
