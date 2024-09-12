@@ -201,7 +201,7 @@ def Get_chat_assistant_document(request):
             )
 
             # Aplicar los filtros dinámicamente
-            # TODO: ESTO HAY QUE REPLICARLO, LO MEJOR ES USAR UN UTIL
+            #todo ESTO HAY QUE REPLICARLO, LO MEJOR ES USAR UN UTIL
             for filter_item in filter_list:
                 field = filter_item.get("id")
                 value = filter_item.get("value")
