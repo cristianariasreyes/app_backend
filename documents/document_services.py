@@ -8,86 +8,60 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_core.documents import Document
 import hashlib
 import uuid
-
+import boto3
+from django.conf import settings
+from botocore.exceptions import NoCredentialsError
 from openai import OpenAI
 
 load_dotenv()
 
 
 class document:
-    def __init__(
-        self,
-        document_file,
-        category,
-        owner,
-        identifier,
-        company,
-        subject,
-        department,
-        record_type,
-    ):
-        self.content = ""
-    def __init__(self, document_file, category, owner,identifier,company,subject,department):
-        self.content = ""  
-        self.subject = ""
-        self.name = ""
-        self.category = category
-        self.owner = owner
-        self.identifier = identifier
-        self.company = company
-        self.document_file = document_file
-        self.subject = subject
-        self.department = department
-        self.metadata_field_info = ""
-        # cargamos el documento
-        read_document = None
-        self.UUID = ""
-
+    def __init__(self,document):
+        self.data = document.POST.copy() #We made a copy of the data in the request object so we can modify it
+        self.file = document.FILES
         try:
-            read_document = PdfReader(self.document_file)
+            read_document = PdfReader(self.file)
             content = ""
-            self.name = self.document_file.filename
+            self.name = self.file.filename
             for page in range(len(read_document.pages)):
                 pageObj = read_document.pages[page]
                 content += pageObj.extract_text()
-            self.content = content
+                
+            #We add the content of the PDF to the data dictionary
+            self.data['content'] = content
+            
             #Creamos un UUID
             self.UUID = str(uuid.uuid4())
         except Exception as e:
-            raise Exception(f"Se produjo un error cargando el documento: {e}")
+            raise Exception(f"There was an error reading PDF File: {e}")
 
     def __str__(self) -> str:
-        return f""" Nombre: {self.name}\n
-                    Asunto: {self.subject}\n
-                    Dueño: {self.owner}\n
-                    Categoria: {self.category}\n
-                    Identificador: {self.identifier}\n      
-                    Company: {self.company}\n
+        return f""" Document: {self.data['name']}\n
+                    Asunto: {self.data['name']}\n
+                    Dueño: {self.data['name']}\n
+                    Categoria: {self.data['category']}\n
+                    Identificador: {self.data['name']}\n      
+                    Company: {self.data['Company']}\n
                     Content : {self.content}\n
                     UUID: {self.UUID}
                     """
+
+
     #Inserta un documento en la base de datos de pinecone
-    def save_document(self):
-        print(f"content:{self.content}")
-        
-        #preparamos el metadata para insertarlo al documento
-        doc_metadata=f"""<metadata>
-                            name:{self.name},
-                            subject:{self.subject},
-                            category:{self.category},
-                            owner:{self.owner},
-                            identifier:{self.identifier},
-                            company:{self.company},
-                            department:{self.department},
-                            UUID:{self.UUID},
-                        </metadata>"""
-        self.content = doc_metadata + self.content
+    def SaveDocument(self):
+        #Guardamos los datos del documento en la base de datos
+        #Guardamos el archivo PDF
+        #Guardamos el registro en pinecone
+        pass
+
+    def SavePineconeDocument(self):
         try:
             print("Dividiendo el texto en chunks...")
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=2000, chunk_overlap=200, length_function=len
             )
-            chunks = text_splitter.split_text(self.content)
+            chunks = text_splitter.split_text(self.data['content'])
             print(f"Se dividió el texto en {len(chunks)} chunks")
             #Creamos los embeddings
             print("Creando los embeddings...")
@@ -107,14 +81,14 @@ class document:
             i = 1
             for chunk in chunks:
                 documento.append(Document(page_content=chunk,metadata={
-                    "name":self.name,
-                    "subject":self.subject,
-                    "category":self.category,
-                    "owner":self.owner,
-                    "identifier":self.identifier,
-                    "company":self.company,
-                    "department":self.department,
-                    "UUID":self.UUID
+                    "name":self.data['name'],
+                    "subject":self.data['subject'],
+                    "category":self.data['category'],
+                    "owner":self.data['owner'],
+                    "identifier":self.data['identifier'],
+                    "company":self.data['company'],
+                    "department":self.data['department'],
+                    "UUID":self.data['content']
                     }))       
                 print(f"Chunk {i} se guardó correctamente. ")
                 i+=1
@@ -123,7 +97,26 @@ class document:
             return self.UUID
         except Exception as e:
             raise Exception(f"Se produjo un error guardando el documento: {e}")
-         
+            
+    def SavePDFDocument(self):
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        )
+        s3_file_path = f"{settings.ENVIRONMENT_CUSTOM}/{self.file.name}"
+        s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{s3_file_path}"
+
+        try:
+            s3_client.upload_fileobj(self.file, settings.AWS_STORAGE_BUCKET_NAME, s3_file_path)
+            return s3_url
+        except NoCredentialsError:
+            raise Exception("AWS credentials not available")
+        except Exception as e:
+            raise Exception(f"Error uploading file to AWS S3: {e}")
+    
+    def SavePostgresDocument(self):
+        pass
     #def delete_document(id_document):
     def delete_document(self,UUID):
         try:

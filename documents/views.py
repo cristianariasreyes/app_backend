@@ -14,8 +14,9 @@ from documents.models import (
     Document,
 )
 from rest_framework import status
-from document_services import document as PineconeDocs
-from django.db import transactionfrom django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from .document_services import document
+from django.db import transaction 
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q
 import boto3
 from botocore.exceptions import NoCredentialsError
@@ -23,20 +24,23 @@ from django.conf import settings
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([IsAuthenticated])  
+#This method handles requests for new documents and also for searching lists of documents
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
 def GetDocument(request):
     if request.method == "GET":
-        search_query = str(request.GET.get("search", "") or "")
-        page_number = int(request.GET.get("page", 1) or 1)
-        items_per_page = int(request.GET.get("per_page", 12) or 12)
+        search_query = str(request.GET.get("search", ""))
+        page_number = int(request.GET.get("page", 1))
+        items_per_page = int(request.GET.get("per_page", 12))
 
-        assistants = Document.objects.filter(
-            Q(name__icontains=search_query)
+        documents = Document.objects.filter(
+            Q(document_name__icontains=search_query)
             | Q(subject__icontains=search_query)
             | Q(resume__icontains=search_query)
         )
 
-        paginator = Paginator(assistants, items_per_page)
+        paginator = Paginator(documents, items_per_page)
 
         try:
             page = paginator.page(page_number)
@@ -57,66 +61,61 @@ def GetDocument(request):
         )
 
     if request.method == "POST":
-        print(request.FILES);
-
         if "file" not in request.FILES:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        file = request.FILES["file"]
-
-        if not file or not request.user.id:
-            return Response(
-                {"error": "Bad request"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        )
-
+        
         try:
-            s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-            s3_url += f"/{settings.ENVIRONMENT_CUSTOM}/{file.name}"
+            # Crear instancia de servicio de documentos
+            DocObject = document(request)
+            DocObject.SaveDocument()
+            # Guardar el archivo en AWS S3 y obtener la URL
+            s3_url = DocObject.SavePDFDocument()
 
-            s3_client.upload_fileobj(file, settings.AWS_STORAGE_BUCKET_NAME, f"{settings.ENVIRONMENT_CUSTOM}/{file.name}")
-
-            # Actualizamos los datos antes de guardarlos
+            # Guardar el documento en Pinecone y obtener el UUID
+            PineconeDoc = DocObject.SavePineconeDocument()
+            
+            DocUUID = PineconeDoc["UUID"]
+            resume = PineconeDoc["resume"]
+            # Preparar los datos para el serializer
             data = {
-                "name": request.data.get("name"),
+                "document_name": request.data.get("document_name"),
                 "subject": request.data.get("subject"),
-                "resume": request.data.get("resume"),
+                "resume": resume,
+                "document_path": s3_url,  # Guardar la URL de S3 en el campo `document_path`
                 "id_document_type": request.data.get("id_document_type"),
                 "id_document_category": request.data.get("id_document_category"),
                 "id_document_department": request.data.get("id_document_department"),
-                "s3_document_path": s3_url,
-                "owner": request.user.id
+                "owner": request.user.id,
+                "id_document": DocUUID  # Agregar el UUID generado por Pinecone
             }
 
+            # Crear y validar el serializer
             serializer = DocumentSerializer(data=data)
-
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except NoCredentialsError:
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
             return Response(
-                {"error": "Credentials not available"},
+                {"error": f"Error processing document: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
 
 
 @api_view(["GET", "PUT", "DELETE"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def DocumentHandle(request, id):
+    #Validate if the document exists
     try:
         document = Document.objects.get(id=id)
     except Document.DoesNotExist:
         return Response(
             {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
         )
-
+    #If exists, we can handle the request whether is GET, PUT or DELETE
     if request.method == "GET":
         serializer = DocumentSerializer(document)
         return Response(serializer.data)

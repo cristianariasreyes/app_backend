@@ -5,7 +5,7 @@ from .services.chat_with_documents import document_chat
 from .services.chat_ast_coach import assistant_coach
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q
-
+from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -22,6 +22,8 @@ from chat.serializers import (
 )
 from chat.services.chat_with_documents import document_chat
 from rest_framework import status
+from rest_framework import permissions
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
@@ -30,14 +32,7 @@ def chat_with_an_assistant(request, id):
     print("chat_with_an_assistant")
     data = request.data
     pregunta = data.get("message")
-
     print("pregunta: " + pregunta)
-
-    new_chat = document_chat()
-    respuesta = new_chat.assistant_chat(id, pregunta)
-    return Response({"respuesta": respuesta})
-
-    pregunta = data.get('message')
     try:
         new_chat = document_chat()
         respuesta = new_chat.assistant_chat(id,pregunta)
@@ -287,103 +282,8 @@ def evaluate_answer(request):
         return JsonResponse({"status": "error", "message": "Invalid request method"})
 
 
-@csrf_exempt
-def handle_assistant_coach(request):
-    if request.method == "POST":
-        data = request.POST
-        id_ast_coach = data.get("id_ast_coach")
-        id_ast_coach_chain = data.get("id_ast_coach_chain")
-        user_answer = data.get("user_answer")
-        id_ast_coach_question = data.get("id_ast_coach_question")
 
-        print(f"el valor de id_ast_coach_chain es:{id_ast_coach_chain}")
-        print(f"el valor de id_ast_coach es:{id_ast_coach}")
-        print(f"el usuario ha respondido:{user_answer}")
-
-        if id_ast_coach_chain == "0":
-            id_ast_coach_chain = None
-        goodbye = False
-        coach = assistant_coach(id_ast_coach, id_ast_coach_chain, user_answer)
-
-        if id_ast_coach_chain is None:
-            print("Creando una nueva ronda de preguntas...")
-            try:
-                new_chain = coach.begin_coaching_chain()
-
-                return JsonResponse(
-                    {
-                        "result": True,
-                        "id_ast_coach_chain": new_chain["id_ast_coach_chain"],
-                        "current_question": new_chain["current_question"],
-                        "welcome_message": new_chain["welcome_message"],
-                        "avatar": new_chain["avatar"],
-                        "id_ast_coach_question": new_chain["id_ast_coach_question"],
-                        "goodbye": False,
-                        "error_message": "",
-                    }
-                )
-            except Exception as e:
-                return JsonResponse({"result": False, "error_message": str(e)})
-        else:
-            try:
-                print("Evaluando la respuesta del alumno...")
-                coach_evaluation = coach.get_comment_and_evaluation(
-                    id_ast_coach_question, user_answer
-                )
-                coach_comment = coach_evaluation["answer_evaluation"]
-                is_correct = coach_evaluation["is_correct"]
-                avatar = coach_evaluation["avatar"]
-                str_next_question = ""
-                if is_correct in [0, 1]:
-                    print("entrando al bloque de is_correct in [0,1]")
-                    coach.save_evaluation(id_ast_coach_question, is_correct)
-                    next_question = coach.get_next_question(id_ast_coach_chain)
-                    if next_question is not None:
-                        str_next_question = next_question["question"]
-                        goodbye = next_question["goodbye"]
-                        if next_question["goodbye"] is not None:
-                            print("Agregando la siguiente pregunta al asistente...")
-                            id_ast_coach_question = coach._add_new_question(
-                                id_ast_coach_chain,
-                                next_question["id_ast_coach_qa"],
-                                str_next_question,
-                            )
-                            print("Termine todas las instrucciones del bloque Ok")
-                    else:
-                        print("entrando al bloque de next_question=None")
-                else:
-                    print(
-                        "entrando al bloque de is_correct not in [0,1] lo que quiere decir que es 2"
-                    )
-                    str_next_question = coach_comment
-
-                diccionario_respuestas = {
-                    "result": True,
-                    "coach_comment": coach_comment,
-                    "is_correct": is_correct,
-                    "avatar": avatar,
-                    "current_question": str_next_question,
-                    "id_ast_coach_question": id_ast_coach_question,
-                    "error_message": "",
-                }
-                print(f"El diccionario de respuestas es:{diccionario_respuestas}")
-                return JsonResponse(
-                    {
-                        "result": True,
-                        "coach_comment": coach_comment,
-                        "is_correct": is_correct,
-                        "avatar": avatar,
-                        "current_question": str_next_question,
-                        "id_ast_coach_question": id_ast_coach_question,
-                        "goodbye": goodbye,
-                        "error_message": "",
-                    }
-                )
-            except Exception as e:
-                return JsonResponse({"result": False, "error_message": str(e)})
-    else:
-        return render(request, 'assistant_coach.html')    
-    
+   
 class NotFoundView(APIView):
     permission_classes = [permissions.AllowAny]
     def get(self, request, *args, **kwargs):

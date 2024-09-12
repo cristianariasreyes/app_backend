@@ -144,6 +144,9 @@ def LoginUser(request):
 
 
 @api_view(["POST", "GET"])
+@api_view(['GET','POST'])
+@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+def LoginUser(request):
     if request.method == 'POST':
         user = get_object_or_404(User, username=request.data['username'])
     
