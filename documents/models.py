@@ -46,6 +46,7 @@ class Document(models.Model):
     id_document_type = models.ForeignKey(Document_type, related_name='documents', on_delete=models.PROTECT)
     id_document_category = models.ForeignKey(Document_category, related_name='documents', on_delete=models.PROTECT)
     id_document_department = models.ForeignKey(Document_department, related_name='documents', on_delete=models.PROTECT)
+    company_id = models.CharField(max_length=200,default='',blank=False, null=False)
     owner = models.ForeignKey(User, related_name='documents',on_delete=models.PROTECT)
     creation_date = models.DateTimeField(auto_now_add=True)
     last_update = models.DateTimeField(auto_now=True)

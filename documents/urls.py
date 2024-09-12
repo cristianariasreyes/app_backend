@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.GetDocument, name="GetDocument"),
+    path('', views.AddListDocument, name="AddListDocument"),
     path('<int:id>', views.DocumentHandle, name="DocumentHandle"),
     path('document_type/', views.document_type, name="document_type"),
     path('document_type/<int:id>', views.document_type_detail, name="document_type_detail"),

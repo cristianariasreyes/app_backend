@@ -12,6 +12,7 @@ import boto3
 from django.conf import settings
 from botocore.exceptions import NoCredentialsError
 from openai import OpenAI
+from chat.services.chat_tools import ChatWithModels
 
 load_dotenv()
 
@@ -20,48 +21,40 @@ class document:
     def __init__(self,document):
         self.data = document.POST.copy() #We made a copy of the data in the request object so we can modify it
         self.file = document.FILES
-        try:
-            read_document = PdfReader(self.file)
-            content = ""
-            self.name = self.file.filename
-            for page in range(len(read_document.pages)):
-                pageObj = read_document.pages[page]
-                content += pageObj.extract_text()
-                
-            #We add the content of the PDF to the data dictionary
-            self.data['content'] = content
-            
-            #Creamos un UUID
-            self.UUID = str(uuid.uuid4())
-        except Exception as e:
-            raise Exception(f"There was an error reading PDF File: {e}")
+        self.uploaded_file = list(self.file.values())[0]
+        self.uploaded_FileName = self.uploaded_file.name
 
     def __str__(self) -> str:
-        return f""" Document: {self.data['name']}\n
-                    Asunto: {self.data['name']}\n
-                    Dueño: {self.data['name']}\n
+        return f""" 
+                    Asunto: {self.data['subject']}\n
+                    Dueño: {self.data['owner']}\n
                     Categoria: {self.data['category']}\n
-                    Identificador: {self.data['name']}\n      
-                    Company: {self.data['Company']}\n
-                    Content : {self.content}\n
-                    UUID: {self.UUID}
+                    Departamento: {self.data['department']}\n
                     """
 
 
     #Inserta un documento en la base de datos de pinecone
     def SaveDocument(self):
-        #Guardamos los datos del documento en la base de datos
-        #Guardamos el archivo PDF
-        #Guardamos el registro en pinecone
-        pass
+        try:
+            self.data['document_name'] = self.uploaded_file.name
+            self.data['company_id'] = "DemoPLG"
+            self.data['id_document'] = self.CreateUUID()
+            content = self.GetContent()
+            self.data['resume'] = self.CreateResume(content)
+            self.data['document_path'] = self.SavePDFDocument()
+            self.SavePineconeDocument(content,self.data['company_id'])
+        except Exception as e:
+            raise Exception(f"Error al crear el documento: {e}")
+        return self.data
 
-    def SavePineconeDocument(self):
+   
+    def SavePineconeDocument(self,content,namespace):
         try:
             print("Dividiendo el texto en chunks...")
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=2000, chunk_overlap=200, length_function=len
             )
-            chunks = text_splitter.split_text(self.data['content'])
+            chunks = text_splitter.split_text(content)
             print(f"Se dividió el texto en {len(chunks)} chunks")
             #Creamos los embeddings
             print("Creando los embeddings...")
@@ -81,20 +74,20 @@ class document:
             i = 1
             for chunk in chunks:
                 documento.append(Document(page_content=chunk,metadata={
-                    "name":self.data['name'],
+                    "name":self.data['document_name'],
                     "subject":self.data['subject'],
-                    "category":self.data['category'],
+                    "category":self.data['document_category_name'],
                     "owner":self.data['owner'],
-                    "identifier":self.data['identifier'],
-                    "company":self.data['company'],
-                    "department":self.data['department'],
-                    "UUID":self.data['content']
+                    "department":self.data['document_department_name'],
+                    "id_document":self.data['id_document'],
+                    "document_type":self.data['document_type_name'],
+                    "resume":self.data['resume']
                     }))       
                 print(f"Chunk {i} se guardó correctamente. ")
                 i+=1
-            PineconeVectorStore.from_documents(documento,embeddings,index_name="agorachat",namespace="agorachat")
+            PineconeVectorStore.from_documents(documento,embeddings,index_name="agorachat",namespace=namespace)
             print("Documento guardado completamente.")
-            return self.UUID
+             
         except Exception as e:
             raise Exception(f"Se produjo un error guardando el documento: {e}")
             
@@ -104,11 +97,14 @@ class document:
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         )
-        s3_file_path = f"{settings.ENVIRONMENT_CUSTOM}/{self.file.name}"
+        
+        s3_file_path = f"{settings.ENVIRONMENT_CUSTOM}/{self.uploaded_file.name}"  # Nombre del archivo
         s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{s3_file_path}"
 
         try:
-            s3_client.upload_fileobj(self.file, settings.AWS_STORAGE_BUCKET_NAME, s3_file_path)
+            print(f"Subiendo el archivo a AWS S3 en la ruta: {s3_file_path}")
+            s3_client.upload_fileobj(self.uploaded_file, settings.AWS_STORAGE_BUCKET_NAME, s3_file_path)  # Subir archivo
+            print("El archivo se subió correctamente a AWS S3")
             return s3_url
         except NoCredentialsError:
             raise Exception("AWS credentials not available")
@@ -175,9 +171,35 @@ class document:
 
         return "El archivo se ha subido y procesado correctamente"
 
+    def GetContent(self):
+        try:
+            print("Leyendo el contenido del documento PDF...")
+            reader = PdfReader(self.uploaded_file)  # Leer el archivo PDF
+            content = ""
+            for page in reader.pages:
+                content += page.extract_text()  # Extraer el texto de cada página
+        except Exception as e:
+            raise Exception(f"Error leyendo el archivo PDF: {e}")
+        print(f"Contenido extraído: {content[:200]}...")  # Muestra un fragmento del contenido
+        return content
+    
+    def CreateUUID(self):
+        DOC_UUID =str(uuid.uuid4())
+        print(f"UUID del documento: {DOC_UUID}")
+        return DOC_UUID
 
-# resultado =document.list_documents("documento")
-# print(f"Resultado: {metadata}")
-# print(type(resultado))
-# documento = document('108969278611.txt','transcription','cristian arias','108969278611','plataforma group','Alerta de guerra','Mesa de ayuda','transcription')
-# documento.insert_in_database()
+    def CreateResume(self,content):
+        role="""Eres un experto resumiendo documentos. Debes generar un resumen de no mas de 500 caracteres del documento
+        completo que se te proporciona"""
+        
+        prompt = f"Documento completo: {content}"
+        try:
+            print("Creando el resumen del documento...")
+            new_chat = ChatWithModels()
+            resume = new_chat.OpenAI_Chat(prompt,role)
+        except Exception as e:
+            raise Exception(f"Error al generar el resumen del documento: {e}")
+        print(f"Este es el resumen del documento: {resume}")
+        return resume
+
+

@@ -23,12 +23,13 @@ from botocore.exceptions import NoCredentialsError
 from django.conf import settings
 
 
+
+
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])  
-#This method handles requests for new documents and also for searching lists of documents
-@api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
-def GetDocument(request):
+@permission_classes([AllowAny])
+# This method handles requests for new documents and also for searching lists of documents
+# Also handle uploading a new document
+def AddListDocument(request):
     if request.method == "GET":
         search_query = str(request.GET.get("search", ""))
         page_number = int(request.GET.get("page", 1))
@@ -61,36 +62,15 @@ def GetDocument(request):
         )
 
     if request.method == "POST":
+        # Validate if a file was sent
         if "file" not in request.FILES:
             return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-        
         try:
-            # Crear instancia de servicio de documentos
+            # Create an instance of the document service
             DocObject = document(request)
-            DocObject.SaveDocument()
-            # Guardar el archivo en AWS S3 y obtener la URL
-            s3_url = DocObject.SavePDFDocument()
-
-            # Guardar el documento en Pinecone y obtener el UUID
-            PineconeDoc = DocObject.SavePineconeDocument()
-            
-            DocUUID = PineconeDoc["UUID"]
-            resume = PineconeDoc["resume"]
-            # Preparar los datos para el serializer
-            data = {
-                "document_name": request.data.get("document_name"),
-                "subject": request.data.get("subject"),
-                "resume": resume,
-                "document_path": s3_url,  # Guardar la URL de S3 en el campo `document_path`
-                "id_document_type": request.data.get("id_document_type"),
-                "id_document_category": request.data.get("id_document_category"),
-                "id_document_department": request.data.get("id_document_department"),
-                "owner": request.user.id,
-                "id_document": DocUUID  # Agregar el UUID generado por Pinecone
-            }
-
-            # Crear y validar el serializer
-            serializer = DocumentSerializer(data=data)
+            SavedDocument = DocObject.SaveDocument()
+            # Create and validate the serializer
+            serializer = DocumentSerializer(data=SavedDocument)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -104,18 +84,17 @@ def GetDocument(request):
             )
 
 
-
 @api_view(["GET", "PUT", "DELETE"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def DocumentHandle(request, id):
-    #Validate if the document exists
+    # Validate if the document exists
     try:
         document = Document.objects.get(id=id)
     except Document.DoesNotExist:
         return Response(
             {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
         )
-    #If exists, we can handle the request whether is GET, PUT or DELETE
+    # If it exists, we can handle the request whether it is GET, PUT, or DELETE
     if request.method == "GET":
         serializer = DocumentSerializer(document)
         return Response(serializer.data)
@@ -146,7 +125,7 @@ def DocumentHandle(request, id):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_type(request):
     if request.method == "GET":
         search_query = str(request.GET.get("search", "") or "")
@@ -186,7 +165,7 @@ def document_type(request):
 
 
 @api_view(["GET", "PUT", "DELETE"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_type_detail(request, id):
     try:
         document_types = Document_type.objects.get(id_document_type=id)
@@ -212,7 +191,7 @@ def document_type_detail(request, id):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_category(request):
     if request.method == "GET":
         search_query = str(request.GET.get("search", "") or "")
@@ -252,7 +231,7 @@ def document_category(request):
 
 
 @api_view(["GET", "PUT", "DELETE"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_category_detail(request, id):
     try:
         document_categories = Document_category.objects.get(id_document_category=id)
@@ -278,7 +257,7 @@ def document_category_detail(request, id):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_department(request):
     if request.method == "GET":
         search_query = str(request.GET.get("search", "") or "")
@@ -318,7 +297,7 @@ def document_department(request):
 
 
 @api_view(["GET", "PUT", "DELETE"])
-@permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
+@permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_department_detail(request, id):
     try:
         document = Document_department.objects.get(id_document_department=id)
