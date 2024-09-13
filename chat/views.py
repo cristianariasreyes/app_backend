@@ -233,6 +233,7 @@ def Get_chat_assistant_document(request):
 
         if request.method == "POST":
             if not request.user.id:
+                print("No hay usuario")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # Hacemos una copia de los datos y agregamos el campo created_by
@@ -246,7 +247,8 @@ def Get_chat_assistant_document(request):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except:
+    except Exception as e:
+        print(f"errorcito: {e}")
         return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -286,6 +288,11 @@ def evaluate_answer(request):
     if request.method == "POST":
         useful = request.POST.get("useful")
         id_chat_history = request.POST.get("id_chat_history")
+        
+        #Convertimos lo que venga el useful (0 o 1, true o false) a booleano
+        useful = useful.lower() in ["true", "1"]
+        
+        
         print(f"Valoración que da el usuario: {useful}")
         print(f"ID del chat history: {id_chat_history}")
         try:

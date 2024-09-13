@@ -41,7 +41,7 @@ class Document(models.Model):
     id_document = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=True)
     subject = models.CharField(max_length=200,default='',blank=False)
     document_name = models.CharField(max_length=200,default='',blank=False)
-    resume = models.CharField(max_length=800,default='',blank=False)
+    resume = models.CharField(max_length=1500,default='',blank=False)
     document_path = models.CharField(max_length=200,default='',blank=False)
     id_document_type = models.ForeignKey(Document_type, related_name='documents', on_delete=models.PROTECT)
     id_document_category = models.ForeignKey(Document_category, related_name='documents', on_delete=models.PROTECT)
@@ -55,5 +55,5 @@ class Document(models.Model):
         db_table = "document"
 
     def __str__(self):
-        return self.document_name
+        return self.subject
 

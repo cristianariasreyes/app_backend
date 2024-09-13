@@ -18,8 +18,10 @@ from documents.models import (
     Document_department,
     Document_category
 )
-load_dotenv()
+import tiktoken
 
+load_dotenv()
+enc = tiktoken.get_encoding("cl100k_base")
 
 class document:
     def __init__(self,document):
@@ -32,8 +34,8 @@ class document:
         return f""" 
                     Asunto: {self.data['subject']}\n
                     Dueño: {self.data['owner']}\n
-                    Categoria: {self.data['category']}\n
-                    Departamento: {self.data['department']}\n
+                    Categoria: {self.data['id_document_category_id']}\n
+                    Departamento: {self.data['id_document_department_id']}\n
                     """
 
 
@@ -53,17 +55,23 @@ class document:
             raise Exception(f"Error al crear el documento: {e}")
         return self.data
 
+    def count_tokens(self,text):
+        return len(enc.encode(text))
    
     def SavePineconeDocument(self,content,namespace):
         try:
             print("Dividiendo el texto en chunks...")
             #Obtenemos el nombre de la categoria, el tipo de documento y el departamento
-            category = Document_category.objects.get(id_document_category=self.data['id_document_category'])
-            department = Document_department.objects.get(id_document_department= self.data['id_document_department'])
-            document_type = Document_type.objects.get(id_document_type= self.data['id_document_type'])
+            category = Document_category.objects.filter(id_document_category=self.data['id_document_category']).values('description').first()['description']
+            department = Document_department.objects.filter(id_document_department=self.data['id_document_department']).values('description').first()['description']
+            document_type = Document_type.objects.filter(id_document_type=self.data['id_document_type']).values('description').first()['description']
             
+ 
+                    
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=2000, chunk_overlap=200, length_function=len
+                chunk_size=8000,  # Tamaño máximo de chunk en tokens
+                chunk_overlap=200,  # Solapamiento en tokens entre chunks
+                length_function= self.count_tokens  # Usamos la función para contar tokens
             )
             chunks = text_splitter.split_text(content)
             print(f"Se dividió el texto en {len(chunks)} chunks")
@@ -81,6 +89,7 @@ class document:
 
             
             print("Guardando el documento y la metadata en el vector de pinecone...")
+            print(f"La categoria y departamento son: {category} y {department} y el namespace es: {namespace}")
             documento = []
             i = 1
             for chunk in chunks:

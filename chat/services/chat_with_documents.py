@@ -47,240 +47,63 @@ class document_chat:
         self.vector_store = PineconeVectorStore.from_existing_index(
             index_name="agora", embedding=self.embeddings
         )
-        self.prompt = ""
-        self.chat_history = []
-        self.history_string = ""
+
         self.asistant = asistant
         self.pdf_id_document = pdf_id_document
         self.pdf_document = pdf_document
         self.conversation_hash = conversation_hash
-    def get_prompt(self,query):
-        print("Armando el prompt...")
-        try:
-
-            system_prompt = """Esta es una conversacion amistosa entre un humano y una IA.
-            El humano hace preguntas y la IA responde.
-            La IA responde solo basado en los documentos que tiene disponibles.
-            La IA tiene memoria, para ello tiene a su disposicion un historial de conversacion reciente que
-            puede solo en estos casos:
-            1. Para ampliar el contexto de la pregunta actual.
-            2. En caso el humano pregunte especificamente por conversaciones recientes.
-            como base de la respuesta. Si la pregunta no tiene nada que ver con el historial debe decir
-            simplemente que no tiene informacion suficiente para responder.
-
-            Pregunta actual del humano: {query}
-            """
-
-            prompt_template = ChatPromptTemplate.from_messages(
-                [
-                    ("system", system_prompt),
-                    ("human", "{query}"),
-                    MessagesPlaceholder(variable_name="chat_history"),
-                ]
-            )
-            return prompt_template
-
-            # prompt = PromptTemplate(
-            #    input_variables={"documents", "query", "history"},
-            #    template=template)
-            # respuesta = prompt.format(documents=documents,query=query,history=history)
-
-            # print("Prompt: "+respuesta)
-        except Exception as e:
-            print(f"Se produjo un error generando el prompt: {e}")
-
-    def get_metadata(self):
-        print("Obteniendo metadata...")
-        return [
-            AttributeInfo(
-                name="name", description="Nombre del archivo subido", type="string"
-            ),
-            AttributeInfo(
-                name="subject",
-                description="Breve resumen de lo que trata el documento",
-                type="string",
-            ),
-            AttributeInfo(
-                name="category",
-                description="""Nos dice que tipo de informacion cotiene el documento. Debemos usar
-                esta metadata para entender mejor el contenido del documento y poder hacer busquedas
-                mas precisas.""",
-                type="string",
-            ),
-            AttributeInfo(
-                name="owner",
-                description="El usuario que ha subido el documento o quien tiene privilegios sobre el documento",
-                type="string",
-            ),
-            AttributeInfo(
-                name="identifier",
-                description="""Identificador. Usar este campo para agrupar documentos que refieren
-                a un unico identificador como podria ser un DNI, un rol, etc.""",
-                type="string",
-            ),
-            AttributeInfo(
-                name="file_type",
-                description="extension del archivo subido",
-                type="string",
-            ),
-            AttributeInfo(
-                name="company",
-                description="A que organizacion pertenece el documento",
-                type="string",
-            ),
-            AttributeInfo(
-                name="department",
-                description="""Departamento al que pertenece el documento. Usar esta metadata para
-                relacionar el contenido con un departamento especifico de la empresa.""",
-                type="string",
-            ),
-        ]
-    def basic_chat_with_memory(self,user_prompt):
-        print("Creando un vector store...")
-        vector_store = PineconeVectorStore.from_existing_index(
-            index_name="agora", embedding=self.embeddings
-        )
-
-        # Obtenemos el historial de chat
-        memory_chat = []
-        memory_chat = self.get_db_history_chat()
-        if memory_chat==[]:
-            memory_chat.append(("",""))
-        #Invocamos el prompt
-        self.prompt = self.get_prompt(user_prompt)
-
-        print("Obteniendo una respuesta con historial...")
-        try:
-            print("creando un retriever...")
-            retriever = vector_store.as_retriever(
-                search_type="similarity_score_threshold",
-                search_kwargs={"k": 5, "score_threshold": 0.74},
-            )
-            print("Obteniendo respuesta con memoria...")
-            qa = ConversationalRetrievalChain.from_llm(
-                llm=self.llm,
-                chain_type="stuff",
-                retriever=retriever,
-                return_source_documents=True,
-            )
-
-            memory_chat.append(HumanMessage(content="Humano: "+ user_prompt))
-            result = qa({"question":self.prompt,"chat_history":memory_chat})
-            #agregamos la respuesta al historial
-            id_chat_history = self.add_entry_to_history(user_prompt,result["answer"])
-            print(f"Historial:{memory_chat}")
-            print(f"Respuesta: {result['answer']}")
-            # enviamos la respuesta y el id_chat_history en un diccionario
-            return {"result": result["answer"], "id_chat_history": id_chat_history}
-        except Exception as e:
-            print(f"Se produjo un error haciendo consulta por similitud: {e}")
-            raise e
-
-    def basic_chat(self, score_threshold):
-        print("BASIC CHAT")
-
-        print("Obteniendo una respuesta...")
-        try:
-            # Invocamos el prompt
-            retriever = self.vector_store.as_retriever(
-                search_type="similarity_score_threshold",
-                search_kwargs={"k": 5, "score_threshold": score_threshold},
-            )
-            qa = RetrievalQA.from_chain_type(
-                llm=self.llm, retriever=retriever, return_source_documents=True
-            )
-            result = qa.invoke(self.query)
-
-            print(result)
-            return result["result"]
-        except Exception as e:
-            print(f"Se produjo un error haciendo consulta por similitud(basica): {e}")
-            if hasattr(e, "args") and len(e.args) > 0:
-                error_message = e.args[0]
-                # Extraer el mensaje del error
-                if isinstance(error_message, dict) and "error" in error_message:
-                    print(f"Error: {error_message['error']['message']}")
-                    return f"Error: {error_message['error']['message']}"
-                else:
-                    print(f"Error: {error_message}")
-                    return f"Error: {error_message}"
-            else:
-                print("Ocurrió un error desconocido.")
-                return "Ocurrió un error desconocido."
-
-    def add_entry_to_history(self, question, answer):
-        print("Agregando input al historial de la conversacion...")
-        pass
-
-    def get_db_history_chat(self, format=None):
-        pass
-
-    def GetDocumentsHashID(self, id_assistant, id_document):
-        print("Entrando a la funcion que obtiene los hash_ID...")
-        if id_document:
-            # Caso donde se está chateando con un solo documento
-            try:
-                print("Intentando obtener documentos...")
-                document = Document.objects.get(id=id_document)
-                id_vdbs = [document.id_vdb]
-            except Document.DoesNotExist:
-                id_vdbs = []
-        elif id_assistant:
-            # Caso donde se está chateando con un asistente
-            documentos = Chat_assistant_documents.objects.select_related(
-                "id_document"
-            ).filter(id_chat_assistant=id_assistant)
-            id_vdbs = list(documentos.values_list("id_document__id_vdb", flat=True))
-        else:
-            id_vdbs = []
-        print(f"ID_VDBs: {id_vdbs}")
-        return id_vdbs
+    
 
     def assistant_chat(self, id_assistant, query):
         # rescatamos de la tabla assistant
         print("Obteniendo asistente...")
-        #verificamos que exista el asistente con id_assistant
+        # verificamos que exista el asistente con id_assistant
         try:
             chat_assistant = Chat_assistant.objects.get(id_chat_assistant=id_assistant)
-            #obtenemos el modelo, rol y temperatura
+            # obtenemos el modelo, rol y temperatura
             llm_model = chat_assistant.llm_model
             temperature = chat_assistant.temperature
             role = chat_assistant.role
-            print(f"Modelo:{llm_model} Temperatura:{temperature} Rol:{role}")
+            namespace = chat_assistant.company_id
+            print(f"Modelo: {llm_model} Temperatura: {temperature} Rol: {role}")
         except Chat_assistant.DoesNotExist:
-            print(f"No se encontró el" + " asistente con id: {id_assistant}")
+            print(f"No se encontró el asistente con id: {id_assistant}")
             return f"No se encontró el asistente con id: {id_assistant}"
-        #Obtenemos todos los documentos del asistente
-        print("Obteniendo documentos del asistente...")
-        chat_assistant_documents = Chat_assistant_documents.objects.filter(
-            id_chat_assistant=id_assistant
-        )
-        document_hashIDs = self.GetDocumentsHashID(id_assistant, None)
 
+        # Obtenemos todos los documentos del asistente usando related_name
+        print("Obteniendo documentos del asistente...")
+        document_ids = [str(doc_id) for doc_id in chat_assistant.assistant_documents.values_list('id_document__id_document', flat=True)]
+        print(f"Documentos del asistente: {document_ids}")
         # Obtenemos los documentos relevantes de Pinecone
         print("Obteniendo documentos relevantes desde Pinecone...")
         RelevantDocsObject = PineconeRelevantDocs(query, 5)
-        Relevant_docs = RelevantDocsObject.HashIDFilterSearch(document_hashIDs)
+        Relevant_docs = RelevantDocsObject.HashIDFilterSearch(document_ids, namespace)
 
         # Concatenamos los documentos relevantes a role
         role = f"""{role} /n Basa tu respuesta en estos documentos: /n {Relevant_docs['relevant_docs']}"""
+
         # Hacemos la consulta a OpenAI
         print("Haciendo consulta a OpenAI...")
         chat = ChatWithModels(llm_model, temperature)
         model_response = chat.OpenAI_Chat(query, role)
         final_response = f"{model_response} /n Fuentes:/n {Relevant_docs['sources']}"
+
         print(f"La respuesta final es: {final_response}")
-        return {'content':final_response,'id_chat_history':0}
+        return {'content': final_response, 'id_chat_history': 0}
+
 
     def ChatSingleDoc(self, id_document, query):
         # Obtenemos el id_vdb del documento
         print("Obteniendo id de base vectorial...")
-        hash_ID = self.GetDocumentsHashID(None, id_document)
-
+        hash_ID = [id_document]
+        #Obtenemos el company_id del documento
+        document = Document.objects.get(id_document=id_document)
+        namespace = document.company_id
+        
         # Consultamos el documento en Pinecone
         print(f"Consultando documento {hash_ID} en Pinecone...")
         RelevantDocsObject = PineconeRelevantDocs(query, 5)
-        Relevant_docs = RelevantDocsObject.HashIDFilterSearch(hash_ID)
+        Relevant_docs = RelevantDocsObject.HashIDFilterSearch(hash_ID,namespace)
 
         # Concatenamos los documentos relevantes a role
         role = f""" /n Basa tu respuesta en estos documentos: /n {Relevant_docs['relevant_docs']}"""
@@ -296,82 +119,17 @@ class document_chat:
         final_response = f"{model_response} /n Fuentes:/n {relevant_docs['sources']}"
         return final_response
 
-    def get_relevant_documents(self):
 
+    def evaluate_answer(self,useful,id_chat_history):
         try:
-            print("Obteniendo documentos relevantes...")
-            embeddings = openai.embeddings.create(
-                input=self.query, model="text-embedding-3-large", dimensions=3072
-            )
-            # print(embeddings.data[0].embedding)
-            relevant_vectors = embeddings.data[0].embedding
-            pc = Pinecone(
-                api_key=os.environ.get("PINECONE_API_KEY"),
-            )
-            index = pc.Index(name="agora")
-            respuesta = index.query(
-                vector=relevant_vectors,
-                top_k=5,
-                include_metadata=True,
-                filter={
-                    "hash_ID": {
-                        "$in": [
-                            "cafa46e6cbf2e9579564e509417f704b",
-                            "e20365773d7ebbe777b579332052cb93",
-                        ]
-                    }
-                },
-            )
-            relevant_docs = ""
-            i = 1
-            for docs in respuesta.matches:
-                relevant_docs += f"Documento {i}: {docs.metadata['text']} /n"
-                i += 1
-            role = f"""Eres"" un asistente que responde las preguntas del usuario basado en documentos relevante.
-                      Estos son los documentos que tienes a disposicion: /n {relevant_docs}"""
-
-            # Generar una respuesta usando OpenAI
-            openai.api_key = os.environ.get("OPENAI_API_KEY")
-            client = OpenAI()
-            respuesta = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": role},
-                    {"role": "user", "content": self.query},
-                ],
-                temperature=0.5,
-            )
-            return respuesta.choices[0].message.content
-
-        except Exception as e:
-            print(f"Se produjo un error obteniendo documentos relevantes: {e}")
-            return None
-
-    @staticmethod
-    def evaluate_answer(useful, id_history_chat):
-        print("Validando la respuesta...")
-        conn = None
-        try:
-            db_path = obtiene_db_path()
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            sql = """UPDATE chat_history SET useful = ? WHERE id_chat_history = ?"""
-            cursor.execute(sql, (useful, id_history_chat))
-            conn.commit()
-            print("Entrada validada.")
-            return True
-        except Exception as e:
-            print(f"Error validando la respuesta: {e}")
-            return f"Error validando la respuesta: {e}"
-        finally:
-            if conn:
-                conn.close()
-
-
-# chat=document_chat()
-# respuesta = chat.assistant_chat(1,"Cual es el presupuesto de la licitacion de subrei para adquirir lansweeper?")
-# print(respuesta)
-# print (respuesta.matches[0])
-# for match in respuesta.matches:
-#   print(f"Hash ID:{match.metadata['hash_ID']} Nombre:{match.metadata['name']}")
-# ,filter={"hash_ID":"cafa46e6cbf2e9579564e509417f704b"}
+            #En el chat history seteamos el campo useful a lo que venga como parametro
+            chat_history = Chat_history.objects.get(id_chat_history=id_chat_history)
+            chat_history.useful = useful
+            chat_history.save()
+            if useful:
+                return "Gracias por tu valoracion, tendremos en cuenta que esta respuesta te ha sido util!"
+            else:
+                return "Gracias por tu valoracion, lo tendremos en cuenta para mejorar!"
+            
+        except Chat_history.DoesNotExist:
+            return False

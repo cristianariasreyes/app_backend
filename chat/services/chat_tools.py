@@ -34,7 +34,7 @@ class PineconeRelevantDocs:
         self.top_k = top_k
         self.query = query
 
-    def HashIDFilterSearch(self, hash_IDs):
+    def HashIDFilterSearch(self, hash_IDs,namespace):
         try:
             print("generando la instancia de OpenAi")
             cliente = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
@@ -46,18 +46,20 @@ class PineconeRelevantDocs:
             pc = Pinecone(
                 api_key=os.environ.get("PINECONE_API_KEY"),
             )
-            index = pc.Index(name="agora")
+            index = pc.Index(name="agorachat")
             respuesta = index.query(
+                namespace=namespace,
                 vector=relevant_vectors,
                 top_k=5,
                 include_metadata=True,
-                filter={"hash_ID": {"$in": hash_IDs}},
+                filter={"id_document": {"$in": hash_IDs}},
             )
         except Exception as e:
             print(e)
             return {"error": "No se pudo conectar con Pinecone"}
-
         # Poblamos una estructura que tiene todos los hash_ID, el nombre del documento y el texto
+
+
         relevant_docs = ""
         original_source = []
         i = 1

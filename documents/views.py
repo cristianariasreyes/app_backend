@@ -235,7 +235,7 @@ def document_category(request):
 @permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_category_detail(request, id):
     try:
-        document_categories = Document_category.objects.get(id_document_category=id)
+        document_categories = Document_category.objects.get(id_document_type_id=id)
     except Document_category.DoesNotExist:
         return Response(
             {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
