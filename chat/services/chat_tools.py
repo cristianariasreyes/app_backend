@@ -14,31 +14,35 @@ class ChatWithModels:
     def OpenAI_Chat(self, query, role):
         # Generar una respuesta usando OpenAI
         try:
-            print(f"chateando con estos parametros: modelo: {self.model}, temperatura: {self.temperature}")
+            print(
+                f"chateando con estos parametros: modelo: {self.model}, temperatura: {self.temperature}"
+            )
             client = OpenAI()
             respuesta = client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": role},
-                    {"role": "user", "content": query}
+                    {"role": "user", "content": query},
                 ],
-                temperature=self.temperature
+                temperature=self.temperature,
             )
             print(respuesta.choices[0].message.content)
             return respuesta.choices[0].message.content
         except Exception as e:
             print(e)
             return f"error: No se pudo conectar con OpenAI: {e}"
+
+
 class PineconeRelevantDocs:
     def __init__(self, query, top_k=5):
         self.top_k = top_k
         self.query = query
 
-    def HashIDFilterSearch(self, hash_IDs,namespace):
+    def HashIDFilterSearch(self, hash_IDs, namespace):
         try:
             print("generando la instancia de OpenAi")
             cliente = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-            print(f"HashID a consultar:{hash_IDs}")
+            print(f"HashID a consultar: {hash_IDs}")
             response = cliente.embeddings.create(
                 input=self.query, model="text-embedding-3-large", dimensions=3072
             )
@@ -58,7 +62,6 @@ class PineconeRelevantDocs:
             print(e)
             return {"error": "No se pudo conectar con Pinecone"}
         # Poblamos una estructura que tiene todos los hash_ID, el nombre del documento y el texto
-
 
         relevant_docs = ""
         original_source = []

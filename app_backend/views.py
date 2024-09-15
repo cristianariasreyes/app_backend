@@ -12,21 +12,21 @@ from django.core.exceptions import ObjectDoesNotExist
 @permission_classes([AllowAny])
 def getRoutes(request):
     routes = [
-        
+
         {'GET,POST': 'register/'},
         {'GET,POST': 'login/'},
         {'POST': 'logout/'},
-        
-        
+
+
         {'GET': 'chat/assistant/'},
         {'POST': 'chat/assistant/'},
         {'GET': 'chat/assistant/<int:id>'},
         {'PUT': 'chat/assistant/<int:id>'},
         {'DELETE': 'chat/assistant/<int:id>'},
-        
-        {'POST': 'chat/chat_my_docs/<int:id>'},
-        {'POST': 'chat/chat_with_assistant/<int:id>'},        
-        
+
+        {'POST': 'chat/chat_my_docs/<uuid:id>'},
+        {'POST': 'chat/chat_with_assistant/<int:id>'},
+
         {'GET': 'chat/chat_assistant_documents/'},
         {'POST': 'chat/chat_assistant_documents/'},
         {'GET': 'chat/chat_assistant_documents/<int:id>'},
@@ -35,38 +35,38 @@ def getRoutes(request):
 
         {'POST': 'chat/evaluate_answer/<int:id_chat_history>/<int:useful>'},
 
-        
+
         {'GET': 'documents/'},
         {'POST': 'documents/'},
-        {'GET': 'documents/<int:id>'},
-        {'PUT': 'documents/<int:id>'},
-        {'DELETE': 'documents/<int:id>'},
+        {'GET': 'documents/<uuid:id>'},
+        {'PUT': 'documents/<uuid:id>'},
+        {'DELETE': 'documents/<uuid:id>'},
 
         {'GET': 'documents/document_type/'},
         {'POST': 'documents/document_type/'},
         {'GET': 'documents/document_type/<int:id>'},
         {'PUT': 'documents/document_type/<int:id>'},
         {'DELETE': 'documents/document_type/<int:id>'},
-        
+
         {'GET': 'documents/document_category/'},
         {'POST': 'documents/document_category/'},
         {'GET': 'documents/document_category/<int:id>'},
         {'PUT': 'documents/document_category/<int:id>'},
         {'DELETE': 'documents/document_category/<int:id>'},
-        
+
         {'GET': 'documents/document_department/'},
         {'POST': 'documents/document_department/'},
         {'GET': 'documents/document_department/<int:id>'},
         {'PUT': 'documents/document_department/<int:id>'},
         {'DELETE': 'documents/document_department/<int:id>'},
-        
-        {'POST': 'users/token'},	
+
+        {'POST': 'users/token'},
         {'POST': 'users/token/refresh'},
 
-        {'GET': 'service_desk/get_categories/'},	
-        {'GET': 'service_desk/get_sentiment/'},	
-        {'GET': 'service_desk/mail_response/'},	
-        
+        {'GET': 'service_desk/get_categories/'},
+        {'GET': 'service_desk/get_sentiment/'},
+        {'GET': 'service_desk/mail_response/'},
+
 
         {"POST": "chat/"},
         {"GET": "chat/assistant/"},
@@ -105,7 +105,7 @@ def getRoutes(request):
         {"POST": "users/token"},
         {"POST": "users/token/refresh"},
     ]
-        
+
     return Response(routes)
 
 

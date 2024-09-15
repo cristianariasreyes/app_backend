@@ -1,3 +1,4 @@
+import uuid
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from .serializers import (
@@ -15,14 +16,12 @@ from documents.models import (
 )
 from rest_framework import status
 from .document_services import document
-from django.db import transaction 
+from django.db import transaction
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q
 import boto3
 from botocore.exceptions import NoCredentialsError
 from django.conf import settings
-
-
 
 
 @api_view(["GET", "POST"])
@@ -64,25 +63,65 @@ def AddListDocument(request):
     if request.method == "POST":
         # Validate if a file was sent
         if "file" not in request.FILES:
-            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-           
-            # Create an instance of the document service
-            DocObject = document(request)
-            SavedDocument = DocObject.SaveDocument()
-            # Create and validate the serializer
-            serializer = DocumentSerializer(data=SavedDocument)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        except Exception as e:
+            print("ERROR ARCHIVO????")
             return Response(
-                {"error": f"Error processing document: {e}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Creamos una transacción atómica para asegurarnos de que el documento se elimina si hay errores
+        with transaction.atomic():
+            try:
+                files = request.FILES
+                document_instance = None
+
+                # Primero creamos el documento en la base de datos
+                data = request.POST.copy()
+                data["owner"] = request.user.id
+
+                serializer = DocumentSerializer(data=data)
+                if serializer.is_valid():
+                    document_instance = (
+                        serializer.save()
+                    )  # Guardamos el documento en la base de datos
+                else:
+                    return Response(
+                        serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Intentamos subir el documento a Pinecone
+                try:
+                    DocObject = document(data, files)
+                    DocObject.data["id_document"] = str(document_instance.id_document)
+                    DocObject.data["owner"] = document_instance.owner.id
+                    SavedDocument = DocObject.SaveDocument()
+
+                    # Si la subida a Pinecone tiene éxito, actualizamos cualquier información adicional
+                    serializer = DocumentSerializer(
+                        document_instance, data=SavedDocument, partial=True
+                    )
+                    if serializer.is_valid():
+                        serializer.save()  # Actualizamos el documento con la información de Pinecone
+                        return Response(serializer.data, status=status.HTTP_201_CREATED)
+                    else:
+                        return Response(
+                            serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                except Exception as e:
+                    # Si hay un error en Pinecone, eliminamos el documento
+                    document_instance.delete()
+                    print("Error en Pinecone:", e)
+                    return Response(
+                        {"error": f"Error uploading document to Pinecone: {e}"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
+
+            except Exception as e:
+                print("Error creando documento:", e)
+                return Response(
+                    {"error": f"Error processing document: {e}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
 
 @api_view(["GET", "PUT", "DELETE"])
@@ -90,7 +129,7 @@ def AddListDocument(request):
 def DocumentHandle(request, id):
     # Validate if the document exists
     try:
-        document = Document.objects.get(id=id)
+        document = Document.objects.get(id_document=id)
     except Document.DoesNotExist:
         return Response(
             {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
@@ -104,10 +143,10 @@ def DocumentHandle(request, id):
         try:
             data = request.data.copy()
 
-            if not data.get('document_path'):
-                data['document_path'] = 'null'
-            if not data.get('id_vdb'):
-                data['id_vdb'] = 0
+            if not data.get("document_path"):
+                data["document_path"] = "null"
+            if not data.get("id_vdb"):
+                data["id_vdb"] = 0
 
             serializer = DocumentSerializer(document, data=data)
             if serializer.is_valid():
@@ -115,13 +154,18 @@ def DocumentHandle(request, id):
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
-            return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-    if request.method == 'DELETE':
+    if request.method == "DELETE":
         try:
             document.delete()
         except Exception as e:
-            return Response({'error': f'Error deleting document in database: {e}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": f"Error deleting document in database: {e}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -235,7 +279,7 @@ def document_category(request):
 @permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_category_detail(request, id):
     try:
-        document_categories = Document_category.objects.get(id_document_type_id=id)
+        document_categories = Document_category.objects.get(id_document_category=id)
     except Document_category.DoesNotExist:
         return Response(
             {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND

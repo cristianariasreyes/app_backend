@@ -26,7 +26,7 @@ from rest_framework import status
 from rest_framework import permissions
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
 def chat_with_an_assistant(request, id):
 
@@ -36,11 +36,17 @@ def chat_with_an_assistant(request, id):
     print("pregunta: " + pregunta)
     try:
         new_chat = document_chat()
-        respuesta = new_chat.assistant_chat(id,pregunta)
+        respuesta = new_chat.assistant_chat(id, pregunta)
     except Exception as e:
-        respuesta = {'result': str(e)}
-        return Response({'respuesta': respuesta}, status=status.HTTP_400_BAD_REQUEST)
-    return Response({'respuesta': respuesta['content'], 'id_chat_history': respuesta['id_chat_history']})
+        respuesta = {"result": str(e)}
+        return Response({"respuesta": respuesta}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(
+        {
+            "respuesta": respuesta["content"],
+            "id_chat_history": respuesta["id_chat_history"],
+        }
+    )
+
 
 @api_view(["POST"])
 @permission_classes([AllowAny])  # Cambia a IsAuthenticated si es necesario
@@ -196,12 +202,12 @@ def Get_chat_assistant_document(request):
 
             # Obteniendo el queryset
             assistants = Chat_assistant_documents.objects.filter(
-                Q(id_document__name__icontains=search_query)
+                Q(id_document__document_name__icontains=search_query)
                 | Q(id_document__resume__icontains=search_query)
             )
 
             # Aplicar los filtros dinámicamente
-            #todo ESTO HAY QUE REPLICARLO, LO MEJOR ES USAR UN UTIL
+            # todo ESTO HAY QUE REPLICARLO, LO MEJOR ES USAR UN UTIL
             for filter_item in filter_list:
                 field = filter_item.get("id")
                 value = filter_item.get("value")
@@ -249,7 +255,7 @@ def Get_chat_assistant_document(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         print(f"errorcito: {e}")
-        return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["GET", "PUT", "DELETE"])
@@ -288,11 +294,10 @@ def evaluate_answer(request):
     if request.method == "POST":
         useful = request.POST.get("useful")
         id_chat_history = request.POST.get("id_chat_history")
-        
-        #Convertimos lo que venga el useful (0 o 1, true o false) a booleano
+
+        # Convertimos lo que venga el useful (0 o 1, true o false) a booleano
         useful = useful.lower() in ["true", "1"]
-        
-        
+
         print(f"Valoración que da el usuario: {useful}")
         print(f"ID del chat history: {id_chat_history}")
         try:
@@ -304,20 +309,17 @@ def evaluate_answer(request):
         return JsonResponse({"status": "error", "message": "Invalid request method"})
 
 
-
-   
 class NotFoundView(APIView):
     permission_classes = [permissions.AllowAny]
-    def get(self, request, *args, **kwargs):
-        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    def post(self, request, *args, **kwargs):
-        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    def put(self, request, *args, **kwargs):
-        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    def delete(self, request, *args, **kwargs):
-        return Response({'detail': 'Not Found'}, status=status.HTTP_404_NOT_FOUND)
 
-    
+    def get(self, request, *args, **kwargs):
+        return Response({"detail": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def post(self, request, *args, **kwargs):
+        return Response({"detail": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, *args, **kwargs):
+        return Response({"detail": "Not Found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, *args, **kwargs):
+        return Response({"detail": "Not Found"}, status=status.HTTP_404_NOT_FOUND)

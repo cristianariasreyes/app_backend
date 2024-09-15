@@ -36,7 +36,7 @@ class Chat_assistantSerializer(serializers.ModelSerializer):
 
 
 class Chat_assistant_documentsSerializer(serializers.ModelSerializer):
-    document_name = serializers.CharField(source="id_document.name", read_only=True)
+    document_name = serializers.CharField(source="id_document.document_name", read_only=True)
     document_resume = serializers.CharField(source="id_document.resume", read_only=True)
     id_chat_assistant_name = serializers.CharField(
         source="id_chat_assistant.name", read_only=True

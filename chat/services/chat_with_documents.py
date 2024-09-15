@@ -2,6 +2,7 @@ import os
 import hashlib
 import time
 import sys
+import uuid
 from utils.utils import obtiene_db_path, get_current_timestamp
 import sqlite3
 from dotenv import load_dotenv
@@ -52,7 +53,6 @@ class document_chat:
         self.pdf_id_document = pdf_id_document
         self.pdf_document = pdf_document
         self.conversation_hash = conversation_hash
-    
 
     def assistant_chat(self, id_assistant, query):
         # rescatamos de la tabla assistant
@@ -72,7 +72,12 @@ class document_chat:
 
         # Obtenemos todos los documentos del asistente usando related_name
         print("Obteniendo documentos del asistente...")
-        document_ids = [str(doc_id) for doc_id in chat_assistant.assistant_documents.values_list('id_document__id_document', flat=True)]
+        document_ids = [
+            str(doc_id)
+            for doc_id in chat_assistant.assistant_documents.values_list(
+                "id_document__id_document", flat=True
+            )
+        ]
         print(f"Documentos del asistente: {document_ids}")
         # Obtenemos los documentos relevantes de Pinecone
         print("Obteniendo documentos relevantes desde Pinecone...")
@@ -89,21 +94,20 @@ class document_chat:
         final_response = f"{model_response} /n Fuentes:/n {Relevant_docs['sources']}"
 
         print(f"La respuesta final es: {final_response}")
-        return {'content': final_response, 'id_chat_history': 0}
-
+        return {"content": final_response, "id_chat_history": 0}
 
     def ChatSingleDoc(self, id_document, query):
         # Obtenemos el id_vdb del documento
-        print("Obteniendo id de base vectorial...")
-        hash_ID = [id_document]
-        #Obtenemos el company_id del documento
+        print("ChatSingleDoc Obteniendo id de base vectorial...")
+        hash_ID = [str(id_document)]
+        # Obtenemos el company_id del documento
         document = Document.objects.get(id_document=id_document)
         namespace = document.company_id
-        
+
         # Consultamos el documento en Pinecone
         print(f"Consultando documento {hash_ID} en Pinecone...")
         RelevantDocsObject = PineconeRelevantDocs(query, 5)
-        Relevant_docs = RelevantDocsObject.HashIDFilterSearch(hash_ID,namespace)
+        Relevant_docs = RelevantDocsObject.HashIDFilterSearch(hash_ID, namespace)
 
         # Concatenamos los documentos relevantes a role
         role = f""" /n Basa tu respuesta en estos documentos: /n {Relevant_docs['relevant_docs']}"""
@@ -113,16 +117,15 @@ class document_chat:
         model_response = chat.OpenAI_Chat(query, role)
         final_response = self.GetWrapedResponse(model_response, Relevant_docs)
         print(f"La respuesta final es: {final_response}")
-        return {'content':final_response,'id_chat_history':0}
+        return {"content": final_response, "id_chat_history": 0}
 
     def GetWrapedResponse(self, model_response, relevant_docs):
         final_response = f"{model_response} /n Fuentes:/n {relevant_docs['sources']}"
         return final_response
 
-
-    def evaluate_answer(self,useful,id_chat_history):
+    def evaluate_answer(self, useful, id_chat_history):
         try:
-            #En el chat history seteamos el campo useful a lo que venga como parametro
+            # En el chat history seteamos el campo useful a lo que venga como parametro
             chat_history = Chat_history.objects.get(id_chat_history=id_chat_history)
             chat_history.useful = useful
             chat_history.save()
@@ -130,6 +133,6 @@ class document_chat:
                 return "Gracias por tu valoracion, tendremos en cuenta que esta respuesta te ha sido util!"
             else:
                 return "Gracias por tu valoracion, lo tendremos en cuenta para mejorar!"
-            
+
         except Chat_history.DoesNotExist:
             return False

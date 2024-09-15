@@ -1,3 +1,4 @@
+import uuid
 from rest_framework import serializers
 from documents.models import (
     Document_type,
@@ -8,7 +9,7 @@ from documents.models import (
 
 
 class DocumentSerializer(serializers.ModelSerializer):
-    
+
     document_category_name = serializers.CharField(
         source="id_document_category.description", read_only=True
     )
@@ -26,12 +27,6 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = "__all__"
-
-    
-    def validate(self, data):
-        # Validaciones personalizadas, si las necesitas
-        return data
-
 
 
 class Document_typeSerializer(serializers.ModelSerializer):

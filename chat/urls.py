@@ -20,7 +20,7 @@ urlpatterns = [
         views.Get_chat_assistant_document_detail,
         name="Get_chat_assistant_document_detail",
     ),
-    path("chat_my_docs/<int:id>", views.chat_my_docs, name="chat_my_docs"),
+    path("chat_my_docs/<uuid:id>", views.chat_my_docs, name="chat_my_docs"),
     path(
         "chat_with_assistant/<int:id>",
         views.chat_with_an_assistant,
