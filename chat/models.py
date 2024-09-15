@@ -21,7 +21,9 @@ class Chat_session(models.Model):
     )
     started = models.DateTimeField(auto_now_add=True)
     ended = models.DateTimeField()
-    id_end_reason = models.ForeignKey(Chat_session_end_reason, related_name="chat_sessions", on_delete=models.PROTECT)
+    id_end_reason = models.ForeignKey(
+        Chat_session_end_reason, related_name="chat_sessions", on_delete=models.PROTECT
+    )
 
     class Meta:
         db_table = "chat_session"
@@ -35,11 +37,13 @@ class Chat_history(models.Model):
     id_user = models.ForeignKey(
         User, related_name="chat_historys", on_delete=models.PROTECT
     )
-    id_chat_session = models.ForeignKey(Chat_session, related_name="chat_historys", on_delete=models.PROTECT)
+    id_chat_session = models.ForeignKey(
+        Chat_session, related_name="chat_historys", on_delete=models.PROTECT
+    )
     human_entry = models.CharField(max_length=2000)
     ia_entry = models.CharField(max_length=2000)
     creation_date = models.DateTimeField()
-    useful = models.BooleanField(blank=False,null=True)
+    useful = models.BooleanField(blank=False, null=True)
 
     class Meta:
         db_table = "chat_history"
@@ -68,8 +72,12 @@ class Chat_assistant(models.Model):
 
 class Chat_assistant_documents(models.Model):
     id_chat_assistant_document = models.AutoField(primary_key=True)
-    id_chat_assistant = models.ForeignKey(Chat_assistant,related_name="assistant_documents", on_delete=models.PROTECT)
-    id_document = models.ForeignKey(Document,related_name="assistant_documents", on_delete=models.PROTECT)
+    id_chat_assistant = models.ForeignKey(
+        Chat_assistant, related_name="assistant_documents", on_delete=models.PROTECT
+    )
+    id_document = models.ForeignKey(
+        Document, related_name="assistant_documents", on_delete=models.PROTECT
+    )
     creation_date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         User, related_name="assistant_documents", on_delete=models.PROTECT
