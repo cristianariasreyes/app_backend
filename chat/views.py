@@ -177,7 +177,10 @@ def Getchat_assistant_detail(request, id):
         return Response(serializer.data)
 
     if request.method == "PUT":
-        serializer = Chat_assistantSerializer(assistants, data=request.data)
+        data = request.data.copy()
+        # TODO: ESTO NO DEBERIA ESTAR EN DURO
+        data["company_id"] = "DemoPLG"
+        serializer = Chat_assistantSerializer(assistants, data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
