@@ -124,7 +124,7 @@ class document_chat:
         final_response = f"{model_response} /n Fuentes:/n {relevant_docs['sources']}"
         return final_response
     
-    def ProcesarRespuestaMarkdown(respuesta):
+    def ProcesarRespuestaMarkdown(self,respuesta):
         # Convertir el texto de Markdown a HTML
         html = markdown.markdown(respuesta)
         return html
