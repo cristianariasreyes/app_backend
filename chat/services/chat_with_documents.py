@@ -20,7 +20,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from documents.models import Document
 from chat.models import Chat_history, Chat_assistant, Chat_assistant_documents
 from .chat_tools import ChatWithModels, PineconeRelevantDocs
-
+import markdown
 load_dotenv()
 
 
@@ -91,10 +91,10 @@ class document_chat:
         print("Haciendo consulta a OpenAI...")
         chat = ChatWithModels(llm_model, temperature)
         model_response = chat.OpenAI_Chat(query, role)
-        final_response = f"{model_response} /n Fuentes:/n {Relevant_docs['sources']}"
-
-        print(f"La respuesta final es: {final_response}")
-        return {"content": final_response, "id_chat_history": 0}
+        Respuesta_con_citas = f"{model_response} /n >**Fuentes:**/n >{Relevant_docs['sources']}"
+        message = self.ProcesarRespuestaMarkdown(Respuesta_con_citas)
+        print(f"La respuesta final es: {message}")
+        return {"content": message, "id_chat_history": 0}
 
     def ChatSingleDoc(self, id_document, query):
         # Obtenemos el id_vdb del documento
@@ -116,12 +116,18 @@ class document_chat:
         chat = ChatWithModels()
         model_response = chat.OpenAI_Chat(query, role)
         final_response = self.GetWrapedResponse(model_response, Relevant_docs)
-        print(f"La respuesta final es: {final_response}")
-        return {"content": final_response, "id_chat_history": 0}
+        message = self.ProcesarRespuestaMarkdown(final_response)
+        print(f"La respuesta final es: {message}")
+        return {"content": message, "id_chat_history": 0}
 
     def GetWrapedResponse(self, model_response, relevant_docs):
         final_response = f"{model_response} /n Fuentes:/n {relevant_docs['sources']}"
         return final_response
+    
+    def ProcesarRespuestaMarkdown(respuesta):
+        # Convertir el texto de Markdown a HTML
+        html = markdown.markdown(respuesta)
+        return html
 
     def evaluate_answer(self, useful, id_chat_history):
         try:
