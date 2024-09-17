@@ -92,9 +92,9 @@ class document_chat:
         chat = ChatWithModels(llm_model, temperature)
         model_response = chat.OpenAI_Chat(query, role)
         Respuesta_con_citas = f"{model_response} /n >**Fuentes:**/n >{Relevant_docs['sources']}"
-        message = self.ProcesarRespuestaMarkdown(Respuesta_con_citas)
-        print(f"La respuesta final es: {message}")
-        return {"content": message, "id_chat_history": 0}
+        #message = self.ProcesarRespuestaMarkdown(Respuesta_con_citas)
+        print(f"La respuesta final es: {Respuesta_con_citas}")
+        return {"content": Respuesta_con_citas, "id_chat_history": 0}
 
     def ChatSingleDoc(self, id_document, query):
         # Obtenemos el id_vdb del documento
