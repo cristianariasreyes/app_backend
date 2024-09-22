@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path("", views.AddListDocument, name="AddListDocument"),
     path("<uuid:id>/", views.DocumentHandle, name="DocumentHandle"),
+    path("get-signed-url/<uuid:id>/", views.get_signed_url, name="get_signed_url"),
     path("document_type/", views.document_type, name="document_type"),
     path(
         "document_type/<int:id>",

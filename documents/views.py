@@ -1,6 +1,10 @@
+import json
+from urllib.parse import unquote
 import uuid
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+
+from utils.generate_presigned_url import generate_presigned_url
 from .serializers import (
     DocumentSerializer,
     Document_typeSerializer,
@@ -18,7 +22,7 @@ from rest_framework import status
 from .document_services import document
 from django.db import transaction
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Q
+from django.db.models import Q, ForeignKey
 import boto3
 from botocore.exceptions import NoCredentialsError
 from django.conf import settings
@@ -31,14 +35,34 @@ from django.conf import settings
 def AddListDocument(request):
     if request.method == "GET":
         search_query = str(request.GET.get("search", ""))
+        globalFilter_query = str(request.GET.get("globalFilter", ""))
         page_number = int(request.GET.get("page", 1))
         items_per_page = int(request.GET.get("per_page", 12))
 
-        documents = Document.objects.filter(
-            Q(document_name__icontains=search_query)
-            | Q(subject__icontains=search_query)
-            | Q(resume__icontains=search_query)
+        # Decodificar el parámetro filters
+        filters_param = request.GET.get("filters", None)
+        filters = json.loads(unquote(filters_param)) if filters_param else []
+
+        search_filter = search_query or globalFilter_query or ""
+
+        query = (
+            Q(document_name__icontains=search_filter)
+            | Q(subject__icontains=search_filter)
+            | Q(resume__icontains=search_filter)
         )
+
+        # Aplicar los filtros dinámicos
+        for filter_item in filters:
+            field_id = filter_item.get("id")
+            field_value = filter_item.get("value")
+            if isinstance(Document._meta.get_field(field_id), ForeignKey):
+                # Filtrar por llave foránea usando el ID exacto
+                query &= Q(**{f"{field_id}": field_value})
+            else:
+                query &= Q(**{f"{field_id}__icontains": field_value})
+
+        # Filtrar los documentos
+        documents = Document.objects.filter(query)
 
         paginator = Paginator(documents, items_per_page)
 
@@ -173,13 +197,25 @@ def DocumentHandle(request, id):
 @permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_type(request):
     if request.method == "GET":
-        search_query = str(request.GET.get("search", "") or "")
+        search_query = str(request.GET.get("search", ""))
+        globalFilter_query = str(request.GET.get("globalFilter", ""))
         page_number = int(request.GET.get("page", 1) or 1)
         items_per_page = int(request.GET.get("per_page", 12) or 12)
 
-        assistants = Document_type.objects.filter(
-            Q(description__icontains=search_query)
-        )
+        filters_param = request.GET.get("filters", None)
+        filters = json.loads(unquote(filters_param)) if filters_param else []
+
+        search_filter = search_query or globalFilter_query or ""
+        query = Q(description__icontains=search_filter)
+
+        # Aplicar los filtros dinámicos
+        for filter_item in filters:
+            field_id = filter_item.get("id")
+            field_value = filter_item.get("value")
+            if field_id and field_value:
+                query &= Q(**{f"{field_id}__icontains": field_value})
+
+        assistants = Document_type.objects.filter(query)
 
         paginator = Paginator(assistants, items_per_page)
 
@@ -239,13 +275,25 @@ def document_type_detail(request, id):
 @permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_category(request):
     if request.method == "GET":
-        search_query = str(request.GET.get("search", "") or "")
+        search_query = str(request.GET.get("search", ""))
+        globalFilter_query = str(request.GET.get("globalFilter", ""))
         page_number = int(request.GET.get("page", 1) or 1)
         items_per_page = int(request.GET.get("per_page", 12) or 12)
 
-        assistants = Document_category.objects.filter(
-            Q(description__icontains=search_query)
-        )
+        filters_param = request.GET.get("filters", None)
+        filters = json.loads(unquote(filters_param)) if filters_param else []
+
+        search_filter = search_query or globalFilter_query or ""
+        query = Q(description__icontains=search_filter)
+
+        # Aplicar los filtros dinámicos
+        for filter_item in filters:
+            field_id = filter_item.get("id")
+            field_value = filter_item.get("value")
+            if field_id and field_value:
+                query &= Q(**{f"{field_id}__icontains": field_value})
+
+        assistants = Document_category.objects.filter(query)
 
         paginator = Paginator(assistants, items_per_page)
 
@@ -305,13 +353,25 @@ def document_category_detail(request, id):
 @permission_classes([AllowAny])  # Change to IsAuthenticated if necessary
 def document_department(request):
     if request.method == "GET":
-        search_query = str(request.GET.get("search", "") or "")
+        search_query = str(request.GET.get("search", ""))
+        globalFilter_query = str(request.GET.get("globalFilter", ""))
         page_number = int(request.GET.get("page", 1) or 1)
         items_per_page = int(request.GET.get("per_page", 12) or 12)
 
-        document_departamens = Document_department.objects.filter(
-            Q(description__icontains=search_query)
-        )
+        filters_param = request.GET.get("filters", None)
+        filters = json.loads(unquote(filters_param)) if filters_param else []
+
+        search_filter = search_query or globalFilter_query or ""
+        query = Q(description__icontains=search_filter)
+
+        # Aplicar los filtros dinámicos
+        for filter_item in filters:
+            field_id = filter_item.get("id")
+            field_value = filter_item.get("value")
+            if field_id and field_value:
+                query &= Q(**{f"{field_id}__icontains": field_value})
+
+        document_departamens = Document_department.objects.filter(query)
 
         paginator = Paginator(document_departamens, items_per_page)
 
@@ -365,3 +425,28 @@ def document_department_detail(request, id):
     if request.method == "DELETE":
         document.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_signed_url(request, id):
+    document = None
+
+    try:
+        document = Document.objects.get(id_document=id)
+    except Document.DoesNotExist:
+        return Response(
+            {"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    if request.method == "GET":
+        signed_url = generate_presigned_url(document.document_name)
+
+        if not signed_url:
+            return Response(
+                {"error": "No se pudo generar el enlace firmado."}, status=500
+            )
+
+        return Response({"url": signed_url}, status=status.HTTP_200_OK)
+    else:
+        return Response(status=status.HTTP_400_BAD_REQUEST)

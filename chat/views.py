@@ -1,4 +1,5 @@
 import json
+from urllib.parse import unquote
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
@@ -126,13 +127,26 @@ def chat_with_documents(request):
 def Getchat_assistant(request):
     if request.method == "GET":
 
-        search_query = str(request.GET.get("search", "") or "")
+        search_query = str(request.GET.get("search", ""))
+        globalFilter_query = str(request.GET.get("globalFilter", ""))
         page_number = int(request.GET.get("page", 1) or 1)
         items_per_page = int(request.GET.get("per_page", 6) or 6)
 
-        assistants = Chat_assistant.objects.filter(
-            Q(name__icontains=search_query) | Q(role__icontains=search_query)
-        )
+        # Decodificar el parámetro filters
+        filters_param = request.GET.get("filters", None)
+        filters = json.loads(unquote(filters_param)) if filters_param else []
+
+        search_filter = search_query or globalFilter_query or ""
+        query = Q(name__icontains=search_filter) | Q(role__icontains=search_filter)
+
+        # Aplicar los filtros dinámicos
+        for filter_item in filters:
+            field_id = filter_item.get("id")
+            field_value = filter_item.get("value")
+            if field_id and field_value:
+                query &= Q(**{f"{field_id}__icontains": field_value})
+
+        assistants = Chat_assistant.objects.filter(query)
 
         paginator = Paginator(assistants, items_per_page)
 
@@ -196,29 +210,29 @@ def Getchat_assistant_detail(request, id):
 def Get_chat_assistant_document(request):
     try:
         if request.method == "GET":
-            search_query = str(request.GET.get("search", "") or "")
+            search_query = str(request.GET.get("search", ""))
+            globalFilter_query = str(request.GET.get("globalFilter", ""))
             page_number = int(request.GET.get("page", 1))
             items_per_page = int(request.GET.get("per_page", 6))
-            filters = str(request.GET.get("filters", "") or "")
 
-            filter_list = json.loads(filters) if filters else []
+            # Decodificar el parámetro filters
+            filters_param = request.GET.get("filters", None)
+            filters = json.loads(unquote(filters_param)) if filters_param else []
 
-            # Obteniendo el queryset
-            assistants = Chat_assistant_documents.objects.filter(
-                Q(id_document__document_name__icontains=search_query)
-                | Q(id_document__resume__icontains=search_query)
+            search_filter = search_query or globalFilter_query or ""
+            query = Q(id_document__document_name__icontains=search_filter) | Q(
+                id_document__resume__icontains=search_filter
             )
 
-            # Aplicar los filtros dinámicamente
-            # todo ESTO HAY QUE REPLICARLO, LO MEJOR ES USAR UN UTIL
-            for filter_item in filter_list:
-                field = filter_item.get("id")
-                value = filter_item.get("value")
+            # Aplicar los filtros dinámicos
+            for filter_item in filters:
+                field_id = filter_item.get("id")
+                field_value = filter_item.get("value")
+                if field_id and field_value:
+                    query &= Q(**{f"{field_id}__icontains": field_value})
 
-                if field and value:
-                    # Crear dinámicamente el filtro
-                    filter_kwargs = {f"{field}": value}
-                    assistants = assistants.filter(**filter_kwargs)
+            # Obteniendo el queryset
+            assistants = Chat_assistant_documents.objects.filter(query)
 
             paginator = Paginator(assistants, items_per_page)
 
