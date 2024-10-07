@@ -21,6 +21,7 @@ from documents.models import Document
 from chat.models import Chat_history, Chat_assistant, Chat_assistant_documents
 from .chat_tools import ChatWithModels, PineconeRelevantDocs
 import markdown
+
 load_dotenv()
 
 
@@ -91,10 +92,17 @@ class document_chat:
         print("Haciendo consulta a OpenAI...")
         chat = ChatWithModels(llm_model, temperature)
         model_response = chat.OpenAI_Chat(query, role)
-        Respuesta_con_citas = f"{model_response} /n >**Fuentes:**/n >{Relevant_docs['sources']}"
-        #message = self.ProcesarRespuestaMarkdown(Respuesta_con_citas)
-        print(f"La respuesta final es: {Respuesta_con_citas}")
-        return {"content": Respuesta_con_citas, "id_chat_history": 0}
+        final_response = self.GetWrapedResponse(model_response, Relevant_docs)
+
+        # Reemplazar saltos de línea por <br/>
+        model_response_con_breaks = final_response.replace("\n", "<br/>")
+        message = self.ProcesarRespuestaMarkdown(model_response_con_breaks)
+
+        print(f"La respuesta final es: {message}")
+        return {
+            "content": message,
+            "id_chat_history": 0,
+        }
 
     def ChatSingleDoc(self, id_document, query):
         # Obtenemos el id_vdb del documento
@@ -116,15 +124,19 @@ class document_chat:
         chat = ChatWithModels()
         model_response = chat.OpenAI_Chat(query, role)
         final_response = self.GetWrapedResponse(model_response, Relevant_docs)
-        message = self.ProcesarRespuestaMarkdown(final_response)
+
+        # Reemplazar saltos de línea por <br/>
+        model_response_con_breaks = final_response.replace("\n", "<br/>")
+        message = self.ProcesarRespuestaMarkdown(model_response_con_breaks)
+
         print(f"La respuesta final es: {message}")
         return {"content": message, "id_chat_history": 0}
 
     def GetWrapedResponse(self, model_response, relevant_docs):
-        final_response = f"{model_response} /n Fuentes:/n {relevant_docs['sources']}"
+        final_response = f"{model_response} <br/><br/>**Fuentes:** <br/><br/>- {relevant_docs['sources']}"
         return final_response
-    
-    def ProcesarRespuestaMarkdown(self,respuesta):
+
+    def ProcesarRespuestaMarkdown(self, respuesta):
         # Convertir el texto de Markdown a HTML
         html = markdown.markdown(respuesta)
         return html
