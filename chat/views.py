@@ -6,7 +6,7 @@ from django.shortcuts import render
 from .services.chat_with_documents import document_chat
 from .services.chat_ast_coach import assistant_coach
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Q
+from django.db.models import Q, ForeignKey
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -143,7 +143,9 @@ def Getchat_assistant(request):
         for filter_item in filters:
             field_id = filter_item.get("id")
             field_value = filter_item.get("value")
-            if field_id and field_value:
+            if isinstance(Chat_assistant._meta.get_field(field_id), ForeignKey):
+                query &= Q(**{f"{field_id}": field_value})
+            else:
                 query &= Q(**{f"{field_id}__icontains": field_value})
 
         assistants = Chat_assistant.objects.filter(query)
@@ -228,7 +230,9 @@ def Get_chat_assistant_document(request):
             for filter_item in filters:
                 field_id = filter_item.get("id")
                 field_value = filter_item.get("value")
-                if field_id and field_value:
+                if isinstance(Chat_assistant_documents._meta.get_field(field_id), ForeignKey):
+                    query &= Q(**{f"{field_id}": field_value})
+                else:
                     query &= Q(**{f"{field_id}__icontains": field_value})
 
             # Obteniendo el queryset
